@@ -9,6 +9,6 @@ let filename = Sys.argv.(1)
 let () =
         let str = read_whole_file filename in
         match Json.parse str with
-        | Error e -> Printf.printf "%s\n" e
+        | Error (e,l) -> Printf.printf "%s at byte %i\n" e l
         | Ok json -> Printf.printf "%a\n" Json.print json
 

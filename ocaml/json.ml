@@ -78,7 +78,7 @@ let parse1 str strlen =
                 let last = proc idx in
                 let len = last - idx in
                 match len with
-                | 0 -> Error "Empty string parsed"
+                | 0 -> Error ("Empty string parsed", idx)
                 | _ -> Ok (String.sub str idx len, last)
         in
         let ask2 idx f =
@@ -105,18 +105,18 @@ let parse1 str strlen =
         in
         let chr ch idx =
                 if idx < strlen && peek idx = ch then Ok (ch, idx + 1)
-                else Error ("Expected " ^ sofc(ch))
+                else Error ("Expected " ^ sofc(ch), idx)
         in
         let parse_null idx =
                 match take idx is_letter with
                 | Ok ("null", idx') -> Ok (Null, idx')
-                | _ -> Error "Expected null"
+                | _ -> Error ("Expected null", idx)
         in
         let parse_bool idx =
                 match take idx is_letter with
                 | Ok ("true", idx') -> Ok (Bool true, idx')
                 | Ok ("false", idx') -> Ok (Bool false, idx')
-                | _ -> Error "Expected bool"
+                | _ -> Error ("Expected bool", idx)
         in
         let parse_number idx =
                 (* parse sign *)
@@ -130,7 +130,7 @@ let parse1 str strlen =
                         | Error _ -> Ok (None, idx)
                         | Ok (_, idx') ->
                                 match take idx' is_digit with
-                                | Error _ -> Error "Missing digits after exponent"
+                                | Error _ -> Error ("Missing digits after exponent", idx')
                                 | Ok (e, idx'2) ->
                                         Ok (Some (int_of_string e), idx'2)
                 in
@@ -162,11 +162,11 @@ let parse1 str strlen =
         in
         let parse_string idx =
                 match chr '"' idx with
-                | Error _ -> Error "String must start with \""
+                | Error _ -> Error ({|String must start with "|}, idx)
                 | Ok (_, idx') ->
                         let str, idx'2 = ask2 idx' non_ending_quote in
                         match chr '"' idx'2 with
-                        | Error _ -> Error "String must end with \""
+                        | Error _ -> Error ({|String must end with "|}, idx'2)
                         | Ok (_, idx'3) ->
                                 Ok (String str, idx'3)
         in
@@ -177,18 +177,18 @@ let parse1 str strlen =
                         | Error _ -> Ok (List.rev acc, idx)
                         | Ok (_, idx') ->
                                 match parse_value idx' with
-                                | Error _ -> Error "Failed to parse array element"
+                                | Error _ -> Error ("Failed to parse array element", idx')
                                 | Ok (value, idx'2) ->
                                         parse_array_items idx'2 (value :: acc)
                 in
                 match chr '[' idx with
-                | Error _ -> Error "Expected ["
+                | Error _ -> Error ("Expected [", idx)
                 | Ok (_, idx') ->
                         match parse_value idx' with
                         | Error _ -> (
                                 let idx' = skip idx' is_ws in
                                 match chr ']' idx' with
-                                | Error _ -> Error "Expected ]"
+                                | Error _ -> Error ("Expected ]", idx')
                                 | Ok (_, idx'2) -> Ok (Array [], idx'2)
                         )
                         | Ok (value, idx'2) ->
@@ -197,7 +197,7 @@ let parse1 str strlen =
                                 | Ok (items, idx'3) ->
                                         let idx'3 = skip idx'3 is_ws in
                                         match chr ']' idx'3 with
-                                        | Error _ -> Error "Expected ]"
+                                        | Error _ -> Error ("Expected ]", idx'3)
                                         | Ok (_, idx'4) ->
                                                 Ok (Array (value :: items), idx'4)
         and parse_object idx =
@@ -207,15 +207,15 @@ let parse1 str strlen =
                         | Ok (String key, idx'2) -> (
                                 let idx'2 = skip idx'2 is_ws in
                                 match chr ':' idx'2 with
-                                | Error _ -> Error "Expected :"
+                                | Error _ -> Error ("Expected :", idx'2)
                                 | Ok (_, idx'3) ->
                                         let idx'3 = skip idx'3 is_ws in
                                         match parse_value idx'3 with
-                                        | Error _ -> Error "Failed to parse object element"
+                                        | Error _ -> Error ("Failed to parse object element", idx'3)
                                         | Ok (value, idx'4) ->
                                                 Ok (key, value, idx'4)
                         )
-                        | Ok _ -> Error "Should never happen"
+                        | Ok _ -> Error ("Should never happen", idx')
                 in
                 let rec parse_object_items idx acc =
                         match chr ',' idx with
@@ -229,14 +229,14 @@ let parse1 str strlen =
                                         parse_object_items idx'2 ((key, value) :: acc)
                 in
                 match chr '{' idx with
-                | Error _ -> Error "Expected {"
+                | Error _ -> Error ("Expected {", idx)
                 | Ok (_, idx') ->
                         let idx' = skip idx' is_ws in
                         match parse_object_item idx' with
                         | Error _ -> (
                                 let idx' = skip idx' is_ws in
                                 match chr '}' idx' with
-                                | Error _ -> Error "Expected }"
+                                | Error _ -> Error ("Expected }", idx')
                                 | Ok (_, idx'2) -> Ok (Object [], idx'2)
                         )
                         | Ok (key, value, idx'2) ->
@@ -246,7 +246,7 @@ let parse1 str strlen =
                                 | Ok (items, idx'3) ->
                                         let idx'3 = skip idx'3 is_ws in
                                         match chr '}' idx'3 with
-                                        | Error _ -> Error "Expected }"
+                                        | Error _ -> Error ("Expected }", idx'3)
                                         | Ok (_, idx'4) ->
                                                 Ok (Object ((key, value) :: items), idx'4)
         and parse_value idx =
@@ -259,20 +259,20 @@ let parse1 str strlen =
                         | '"' -> parse_string idx
                         | '[' -> parse_array idx
                         | '{' -> parse_object idx
-                        | _ -> Error "parse error"
-                else Error "Out of bounds read attempt"
+                        | _ -> Error ("parse error", idx)
+                else Error ("Out of bounds read attempt", idx)
         in
         match parse_value 0 with
         | Error e -> Error e
         | Ok (result, idx) ->
                 if idx = strlen then Ok result
-                else Error "garbage found"
+                else Error ("garbage found at theend of string", idx)
 
 (** Parse string into json *)
 let parse str =
         let strlen = length str in
         if strlen > 0 then parse1 str strlen
-        else Error "Empty string"
+        else Error ("Empty string", 0)
 
 let print_bool chan = function
         | false -> output_string chan "false"
