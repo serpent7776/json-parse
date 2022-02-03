@@ -4,5 +4,5 @@ test:
 	env CAMLRUNPARAM=b ./test
 
 .PHONY: parser
-parser:
+parser: test
 	ocamlopt -w A-4-50 -o parser json.ml parser.ml
