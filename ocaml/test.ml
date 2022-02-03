@@ -41,6 +41,7 @@ let () =
 
         (* strings *)
         assert (ok parse {|"foobar"|} (String "foobar"));
+        assert (fails parse {|"|});
         assert (fails parse {|"foobar|});
         assert (ok parse {|""|} (String ""));
         assert (fails parse {|"foo"bar|});
@@ -66,6 +67,7 @@ let () =
                 Number {integer = 2; fraction = 0; precision = 0; exponent = 0};
                 Number {integer = 3; fraction = 0; precision = 0; exponent = 0};
         ]));
+        assert (fails parse {|["|});
         assert (ok parse "[true,false,null,0]" (Array [ (Bool true); (Bool false); Null; Number {integer = 0; fraction = 0; precision = 0; exponent = 0} ]));
         assert (ok parse "[[],[]]" (Array [ Array [ ]; Array [ ] ]));
         assert (fails parse "[1,");
@@ -85,9 +87,12 @@ let () =
                 ("c", Number {integer = 3; fraction = 0; precision = 0; exponent = 0} );
         ]));
         assert (ok parse {|{"x":9.8e7}|} (Object [ ("x", Number {integer = 9; fraction = 8; precision = 1; exponent = 7} ) ]));
+        assert (fails parse {|{"1":1|});
 
         (* values with spaces *)
         assert (fails parse "   ");
+        assert (fails parse " [  ");
+        assert (fails parse " ]  ");
         assert (ok parse "   null  " Null);
         assert (ok parse " true " (Bool true));
         assert (ok parse "  false " (Bool false));
