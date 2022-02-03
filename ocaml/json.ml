@@ -259,7 +259,7 @@ let parse1 str strlen =
                         | '"' -> parse_string idx
                         | '[' -> parse_array idx
                         | '{' -> parse_object idx
-                        | _ -> Error ("parse error", idx)
+                        | _ -> Error ("Invalid value", idx)
                 else Error ("Out of bounds read attempt", idx)
         in
         match parse_value 0 with
