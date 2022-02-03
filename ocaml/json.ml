@@ -83,8 +83,7 @@ let parse1 str strlen =
         in
         let ask2 idx f =
                 let rec proc idx prev =
-                        let ch = peek idx in
-                        if idx < strlen && f ch prev then proc (idx + 1) ch
+                        if idx < strlen && f (peek idx) prev then proc (idx + 1) (peek idx)
                         else idx
                 in
                 (*
