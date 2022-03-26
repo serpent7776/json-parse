@@ -66,6 +66,11 @@ let length str =
         if strlen > 0 then proc (strlen - 1)
         else 0
 
+let (let=) v f =
+        match v with
+        | Error _ as err -> err
+        | Ok ok -> f ok
+
 (** Parse non empty string into json *)
 let parse1 str strlen =
         let peek idx = str.[idx]
@@ -147,20 +152,19 @@ let parse1 str strlen =
                                         (Some (int_of_string f, precision), idx'2)
                 in
                 (* parse integral part *)
-                Result.bind (take idx' is_digit) (fun (n, idx') ->
-                        let integer = sign * int_of_string n in
-                        (* parse fraction part *)
-                        let fraction, precision, idx'2 = match parse_number_fraction idx' with
-                        | (None, idx'2) -> 0, 0, idx'2
-                        | (Some (fraction, precision), idx'2) -> fraction, precision, idx'2
-                        in
-                        (* parse exponent *)
-                        match parse_number_exponent idx'2 with
-                        | Error e -> Error e
-                        | Ok (None, idx'3) -> Ok (Number (make_decimal integer fraction precision), idx'3)
-                        | Ok (Some exponent, idx'3) ->
-                                Ok (Number (make_number integer fraction precision exponent), idx'3)
-                )
+                let= (n, idx') = take idx' is_digit in
+                let integer = sign * int_of_string n in
+                (* parse fraction part *)
+                let fraction, precision, idx'2 = match parse_number_fraction idx' with
+                | (None, idx'2) -> 0, 0, idx'2
+                | (Some (fraction, precision), idx'2) -> fraction, precision, idx'2
+                in
+                (* parse exponent *)
+                match parse_number_exponent idx'2 with
+                | Error _ as err -> err
+                | Ok (None, idx'3) -> Ok (Number (make_decimal integer fraction precision), idx'3)
+                | Ok (Some exponent, idx'3) ->
+                        Ok (Number (make_number integer fraction precision exponent), idx'3)
         in
         let parse_string idx =
                 match chr '"' idx with
@@ -194,18 +198,16 @@ let parse1 str strlen =
                                 | Ok (_, idx'2) -> Ok (Array [], idx'2)
                         )
                         | Ok (value, idx'2) ->
-                                match parse_array_items idx'2 [] with
-                                | Error e -> Error e
-                                | Ok (items, idx'3) ->
-                                        let idx'3 = skip_ws idx'3 in
-                                        match chr ']' idx'3 with
-                                        | Error _ -> Error ("Expected ]", idx'3)
-                                        | Ok (_, idx'4) ->
-                                                Ok (Array (value :: items), idx'4)
+                                let= (items, idx'3) = parse_array_items idx'2 [] in
+                                let idx'3 = skip_ws idx'3 in
+                                match chr ']' idx'3 with
+                                | Error _ -> Error ("Expected ]", idx'3)
+                                | Ok (_, idx'4) ->
+                                        Ok (Array (value :: items), idx'4)
         and parse_object idx =
                 let parse_object_item idx' =
                         match parse_string idx' with
-                        | Error e -> Error e
+                        | Error _ as err -> err
                         | Ok (String key, idx'2) -> (
                                 let idx'2 = skip_ws idx'2 in
                                 match chr ':' idx'2 with
@@ -224,11 +226,9 @@ let parse1 str strlen =
                         | Error _ -> Ok (List.rev acc, idx)
                         | Ok (_, idx') ->
                                 let idx' = skip_ws idx' in
-                                match parse_object_item idx' with
-                                | Error e -> Error e
-                                | Ok (key, value, idx'2) ->
-                                        let idx'2 = skip_ws idx'2 in
-                                        parse_object_items idx'2 ((key, value) :: acc)
+                                let= (key, value, idx'2) = parse_object_item idx' in
+                                let idx'2 = skip_ws idx'2 in
+                                parse_object_items idx'2 ((key, value) :: acc)
                 in
                 match chr '{' idx with
                 | Error _ -> Error ("Expected {", idx)
@@ -243,14 +243,12 @@ let parse1 str strlen =
                         )
                         | Ok (key, value, idx'2) ->
                                 let idx'2 = skip_ws idx'2 in
-                                match parse_object_items idx'2 [] with
-                                | Error e -> Error e
-                                | Ok (items, idx'3) ->
-                                        let idx'3 = skip_ws idx'3 in
-                                        match chr '}' idx'3 with
-                                        | Error _ -> Error ("Expected }", idx'3)
-                                        | Ok (_, idx'4) ->
-                                                Ok (Object ((key, value) :: items), idx'4)
+                                let= (items, idx'3) = parse_object_items idx'2 [] in
+                                let idx'3 = skip_ws idx'3 in
+                                match chr '}' idx'3 with
+                                | Error _ -> Error ("Expected }", idx'3)
+                                | Ok (_, idx'4) ->
+                                        Ok (Object ((key, value) :: items), idx'4)
         and parse_value idx =
                 let idx = skip_ws idx in
                 if idx < strlen then
@@ -264,11 +262,9 @@ let parse1 str strlen =
                         | _ -> Error ("Invalid value", idx)
                 else Error ("Out of bounds read attempt", idx)
         in
-        match parse_value 0 with
-        | Error e -> Error e
-        | Ok (result, idx) ->
-                if idx = strlen then Ok result
-                else Error ("garbage found at theend of string", idx)
+        let= (result, idx) = parse_value 0 in
+        if idx = strlen then Ok result
+        else Error ("garbage found at the end of string", idx)
 
 (** Parse string into json *)
 let parse str =
