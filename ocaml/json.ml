@@ -96,14 +96,14 @@ let parse1 str strlen =
                 let len = last - idx in
                 (String.sub str idx len, last)
         in
-        let skip idx f =
+        let skip f idx =
                 let rec proc last =
                         if last < strlen && f (peek last) then proc (last + 1)
                         else last
                 in
                 proc idx
         in
-        let skip_ws idx = skip idx is_ws
+        let skip_ws idx = skip is_ws idx
         in
         let chr ch idx =
                 if idx < strlen && peek idx = ch then Ok (ch, idx + 1)
