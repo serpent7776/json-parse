@@ -187,37 +187,30 @@ let parse1 str strlen =
                                 | Ok (value, idx'2) ->
                                         parse_array_items idx'2 (value :: acc)
                 in
-                match chr '[' idx with
-                | Error _ -> Error ("Expected [", idx)
-                | Ok (_, idx') ->
-                        match parse_value idx' with
-                        | Error _ -> (
-                                let idx' = skip_ws idx' in
-                                match chr ']' idx' with
-                                | Error _ -> Error ("Expected ]", idx')
-                                | Ok (_, idx'2) -> Ok (Array [], idx'2)
-                        )
-                        | Ok (value, idx'2) ->
-                                let= (items, idx'3) = parse_array_items idx'2 [] in
-                                let idx'3 = skip_ws idx'3 in
-                                match chr ']' idx'3 with
-                                | Error _ -> Error ("Expected ]", idx'3)
-                                | Ok (_, idx'4) ->
-                                        Ok (Array (value :: items), idx'4)
+                let= (_, idx') = chr '[' idx in
+                match parse_value idx' with
+                | Error _ -> (
+                        let idx' = skip_ws idx' in
+                        let= (_, idx'2) = chr ']' idx' in
+                        Ok (Array [], idx'2)
+                )
+                | Ok (value, idx'2) ->
+                        let= (items, idx'3) = parse_array_items idx'2 [] in
+                        let idx'3 = skip_ws idx'3 in
+                        let= (_, idx'4) = chr ']' idx'3 in
+                        Ok (Array (value :: items), idx'4)
         and parse_object idx =
                 let parse_object_item idx' =
                         match parse_string idx' with
                         | Error _ as err -> err
                         | Ok (String key, idx'2) -> (
                                 let idx'2 = skip_ws idx'2 in
-                                match chr ':' idx'2 with
-                                | Error _ -> Error ("Expected :", idx'2)
-                                | Ok (_, idx'3) ->
-                                        let idx'3 = skip_ws idx'3 in
-                                        match parse_value idx'3 with
-                                        | Error _ -> Error ("Failed to parse object element", idx'3)
-                                        | Ok (value, idx'4) ->
-                                                Ok (key, value, idx'4)
+                                let= (_, idx'3) = chr ':' idx'2 in
+                                let idx'3 = skip_ws idx'3 in
+                                match parse_value idx'3 with
+                                | Error _ -> Error ("Failed to parse object element", idx'3)
+                                | Ok (value, idx'4) ->
+                                        Ok (key, value, idx'4)
                         )
                         | Ok _ -> Error ("Should never happen", idx')
                 in
@@ -230,25 +223,20 @@ let parse1 str strlen =
                                 let idx'2 = skip_ws idx'2 in
                                 parse_object_items idx'2 ((key, value) :: acc)
                 in
-                match chr '{' idx with
-                | Error _ -> Error ("Expected {", idx)
-                | Ok (_, idx') ->
+                let= (_, idx') = chr '{' idx in
+                let idx' = skip_ws idx' in
+                match parse_object_item idx' with
+                | Error _ -> (
                         let idx' = skip_ws idx' in
-                        match parse_object_item idx' with
-                        | Error _ -> (
-                                let idx' = skip_ws idx' in
-                                match chr '}' idx' with
-                                | Error _ -> Error ("Expected }", idx')
-                                | Ok (_, idx'2) -> Ok (Object [], idx'2)
-                        )
-                        | Ok (key, value, idx'2) ->
-                                let idx'2 = skip_ws idx'2 in
-                                let= (items, idx'3) = parse_object_items idx'2 [] in
-                                let idx'3 = skip_ws idx'3 in
-                                match chr '}' idx'3 with
-                                | Error _ -> Error ("Expected }", idx'3)
-                                | Ok (_, idx'4) ->
-                                        Ok (Object ((key, value) :: items), idx'4)
+                        let= (_, idx'2) = chr '}' idx' in
+                        Ok (Object [], idx'2)
+                )
+                | Ok (key, value, idx'2) ->
+                        let idx'2 = skip_ws idx'2 in
+                        let= (items, idx'3) = parse_object_items idx'2 [] in
+                        let idx'3 = skip_ws idx'3 in
+                        let= (_, idx'4) = chr '}' idx'3 in
+                        Ok (Object ((key, value) :: items), idx'4)
         and parse_value idx =
                 let idx = skip_ws idx in
                 if idx < strlen then
