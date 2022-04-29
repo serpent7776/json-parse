@@ -75,7 +75,7 @@ let (let=) v f =
 let parse1 str strlen =
         let peek idx = str.[idx]
         in
-        let take idx f =
+        let take f idx =
                 let rec proc last =
                         if last < strlen && f (peek last) then proc (last + 1)
                         else last
@@ -115,12 +115,12 @@ let parse1 str strlen =
                 else Error ("Expected " ^ sofc(ch), idx)
         in
         let parse_null idx =
-                match take idx is_letter with
+                match take is_letter idx with
                 | Ok ("null", idx') -> Ok (Null, idx')
                 | _ -> Error ("Expected null", idx)
         in
         let parse_bool idx =
-                match take idx is_letter with
+                match take is_letter idx with
                 | Ok ("true", idx') -> Ok (Bool true, idx')
                 | Ok ("false", idx') -> Ok (Bool false, idx')
                 | _ -> Error ("Expected bool", idx)
@@ -136,7 +136,7 @@ let parse1 str strlen =
                         match chr 'e' idx with
                         | Error _ -> Ok (None, idx)
                         | Ok (_, idx') ->
-                                match take idx' is_digit with
+                                match take is_digit idx' with
                                 | Error _ -> Error ("Missing digits after exponent", idx')
                                 | Ok (e, idx'2) ->
                                         Ok (Some (int_of_string e), idx'2)
@@ -145,14 +145,14 @@ let parse1 str strlen =
                         match chr '.' idx with
                         | Error _ -> (None, idx)
                         | Ok (_, idx') ->
-                                match take idx' is_digit with
+                                match take is_digit idx' with
                                 | Error _ -> (None, idx')
                                 | Ok (f, idx'2) ->
                                         let precision = String.length f in
                                         (Some (int_of_string f, precision), idx'2)
                 in
                 (* parse integral part *)
-                let= (n, idx') = take idx' is_digit in
+                let= (n, idx') = take is_digit idx' in
                 let integer = sign * int_of_string n in
                 (* parse fraction part *)
                 let fraction, precision, idx'2 = match parse_number_fraction idx' with
