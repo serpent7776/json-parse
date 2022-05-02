@@ -71,6 +71,21 @@ let (let=) v f =
         | Error _ as err -> err
         | Ok ok -> f ok
 
+let ppi parse ok_f err_f idx =
+        match parse idx with
+        | Ok (_, idx') -> ok_f idx'
+        | Error (_, idx') -> err_f idx'
+
+let ppx parse ok_f err_f idx =
+        match parse idx with
+        | Ok (v, idx) -> ok_f v idx
+        | Error (err, idx) -> err_f err idx
+
+let none idx = (None, idx)
+let none2 _ idx = (None, idx)
+
+let oknone idx = Ok (None, idx)
+
 (** Parse non empty string into json *)
 let parse1 str strlen =
         let peek idx = str.[idx]
@@ -133,29 +148,32 @@ let parse1 str strlen =
                         | Error _ -> 1, idx
                 in
                 let parse_number_exponent idx =
-                        match chr 'e' idx with
-                        | Error _ -> Ok (None, idx)
-                        | Ok (_, idx') ->
-                                match take is_digit idx' with
-                                | Error _ -> Error ("Missing digits after exponent", idx')
-                                | Ok (e, idx'2) ->
-                                        Ok (Some (int_of_string e), idx'2)
+                        let no_exponent_digits_error _ idx' =
+                                Error ("Missing digits after exponent", idx')
+                        in
+                        let make_exponent e idx' =
+                                Ok (Some (int_of_string e), idx')
+                        in
+                        ppi (chr 'e')
+                                (ppx (take is_digit) make_exponent no_exponent_digits_error)
+                                oknone
+                                idx
                 in
-                let parse_number_fraction idx =
-                        match chr '.' idx with
-                        | Error _ -> (None, idx)
-                        | Ok (_, idx') ->
-                                match take is_digit idx' with
-                                | Error _ -> (None, idx')
-                                | Ok (f, idx'2) ->
-                                        let precision = String.length f in
-                                        (Some (int_of_string f, precision), idx'2)
+                let parse_dot_fraction idx =
+                        let make_fraction f idx' =
+                                let precision = String.length f in
+                                (Some (int_of_string f, precision), idx')
+                        in
+                        ppi (chr '.')
+                                (ppx (take is_digit) make_fraction none2)
+                                none
+                                idx
                 in
                 (* parse integral part *)
                 let= (n, idx') = take is_digit idx' in
                 let integer = sign * int_of_string n in
                 (* parse fraction part *)
-                let fraction, precision, idx'2 = match parse_number_fraction idx' with
+                let fraction, precision, idx'2 = match parse_dot_fraction idx' with
                 | (None, idx'2) -> 0, 0, idx'2
                 | (Some (fraction, precision), idx'2) -> fraction, precision, idx'2
                 in
@@ -167,39 +185,58 @@ let parse1 str strlen =
                         Ok (Number (make_number integer fraction precision exponent), idx'3)
         in
         let parse_string idx =
-                match chr '"' idx with
-                | Error _ -> Error ({|String must start with "|}, idx)
-                | Ok (_, idx') ->
+                let invalid_string_start_error idx' =
+                        Error ({|String must start with "|}, idx')
+                in
+                let invalid_string_end_error idx' =
+                        Error ({|String must end with "|}, idx')
+                in
+                let make_string s idx =
+                        Ok (String s, idx)
+                in
+                let parse_string_body idx' =
                         let str, idx'2 = ask2 idx' non_ending_quote in
-                        match chr '"' idx'2 with
-                        | Error _ -> Error ({|String must end with "|}, idx'2)
-                        | Ok (_, idx'3) ->
-                                Ok (String str, idx'3)
+                        ppi (chr '"') (make_string str) invalid_string_end_error idx'2
+                in
+                ppi (chr '"') parse_string_body invalid_string_start_error idx
         in
         let rec parse_array idx =
-                let rec parse_array_items idx acc =
-                        let idx = skip_ws idx in
-                        match chr ',' idx with
-                        | Error _ -> Ok (List.rev acc, idx)
-                        | Ok (_, idx') ->
-                                match parse_value idx' with
-                                | Error _ -> Error ("Failed to parse array element", idx')
-                                | Ok (value, idx'2) ->
-                                        parse_array_items idx'2 (value :: acc)
-                in
-                let= (_, idx') = chr '[' idx in
-                match parse_value idx' with
-                | Error _ -> (
+                let make_empty_array _ idx' =
                         let idx' = skip_ws idx' in
                         let= (_, idx'2) = chr ']' idx' in
                         Ok (Array [], idx'2)
-                )
-                | Ok (value, idx'2) ->
-                        let= (items, idx'3) = parse_array_items idx'2 [] in
-                        let idx'3 = skip_ws idx'3 in
-                        let= (_, idx'4) = chr ']' idx'3 in
-                        Ok (Array (value :: items), idx'4)
+                in
+                let invalid_array_element_error _ idx' =
+                        Error ("Failed to parse array element", idx')
+                in
+                let rec parse_next_array_item acc idx' =
+                        let idx' = skip_ws idx' in
+                        ppi (chr ',') (
+                                ppx parse_value
+                                        (fun value idx'2 -> parse_next_array_item (value :: acc) idx'2)
+                                        invalid_array_element_error
+                                )
+                                (fun idx'2 -> Ok (List.rev acc, idx'2))
+                                idx'
+                in
+                let parse_array_items value idx' =
+                        parse_next_array_item [value] idx'
+                in
+                let parse_array_rest value idx' =
+                        let= (values, idx'2) = parse_array_items value idx' in
+                        let idx'2 = skip_ws idx'2 in
+                        let= (_, idx'3) = chr ']' idx'2 in
+                        Ok (Array values, idx'3)
+                in
+                let= (_, idx') = chr '[' idx in
+                ppx parse_value parse_array_rest make_empty_array idx'
         and parse_object idx =
+                let invalid_object_value_error _ idx' =
+                        Error ("Failed to parse object element", idx')
+                in
+                let make_object_item key value idx' =
+                        Ok ((key, value), idx')
+                in
                 let parse_object_item idx' =
                         match parse_string idx' with
                         | Error _ as err -> err
@@ -207,36 +244,38 @@ let parse1 str strlen =
                                 let idx'2 = skip_ws idx'2 in
                                 let= (_, idx'3) = chr ':' idx'2 in
                                 let idx'3 = skip_ws idx'3 in
-                                match parse_value idx'3 with
-                                | Error _ -> Error ("Failed to parse object element", idx'3)
-                                | Ok (value, idx'4) ->
-                                        Ok (key, value, idx'4)
+                                ppx (parse_value) (make_object_item key) invalid_object_value_error idx'3
                         )
                         | Ok _ -> Error ("Should never happen", idx')
                 in
-                let rec parse_object_items idx acc =
-                        match chr ',' idx with
-                        | Error _ -> Ok (List.rev acc, idx)
-                        | Ok (_, idx') ->
-                                let idx' = skip_ws idx' in
-                                let= (key, value, idx'2) = parse_object_item idx' in
-                                let idx'2 = skip_ws idx'2 in
-                                parse_object_items idx'2 ((key, value) :: acc)
+                let rec parse_next_object_item acc idx' =
+                        ppi (chr ',') (fun idx'2 ->
+                                        let idx'2 = skip_ws idx'2 in
+                                        let= (item, idx'3) = parse_object_item idx'2 in
+                                        let idx'3 = skip_ws idx'3 in
+                                        parse_next_object_item (item :: acc) idx'3
+                                )
+                                (fun idx'2 -> Ok (List.rev acc, idx'2))
+                                idx'
                 in
-                let= (_, idx') = chr '{' idx in
-                let idx' = skip_ws idx' in
-                match parse_object_item idx' with
-                | Error _ -> (
+                let parse_object_items item idx' =
+                        parse_next_object_item [item] idx'
+                in
+                let parse_object_rest item idx' =
+                        let idx' = skip_ws idx' in
+                        let= (items, idx'2) = parse_object_items item idx' in
+                        let idx'2 = skip_ws idx'2 in
+                        let= (_, idx'3) = chr '}' idx'2 in
+                        Ok (Object items, idx'3)
+                in
+                let make_empty_object _ idx' =
                         let idx' = skip_ws idx' in
                         let= (_, idx'2) = chr '}' idx' in
                         Ok (Object [], idx'2)
-                )
-                | Ok (key, value, idx'2) ->
-                        let idx'2 = skip_ws idx'2 in
-                        let= (items, idx'3) = parse_object_items idx'2 [] in
-                        let idx'3 = skip_ws idx'3 in
-                        let= (_, idx'4) = chr '}' idx'3 in
-                        Ok (Object ((key, value) :: items), idx'4)
+                in
+                let= (_, idx') = chr '{' idx in
+                let idx' = skip_ws idx' in
+                ppx parse_object_item parse_object_rest make_empty_object idx'
         and parse_value idx =
                 let idx = skip_ws idx in
                 if idx < strlen then
