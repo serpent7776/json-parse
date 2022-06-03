@@ -101,6 +101,17 @@ val _ = (
   fails parse "{\"foo\"}";
   fails parse "{\"foo\":}";
 
+  (* values with spaces *)
+  fails parse "   ";
+  fails parse " [ ";
+  fails parse " ] ";
+  ok parse "   null   " Null;
+  ok parse "   true   " (Bool true);
+  ok parse "  false  " (Bool false);
+  ok parse " [ true, false, null ] " (Array [Bool true, Bool false, Null]);
+  ok parse " [ true , false , null ] " (Array [Bool true, Bool false, Null]);
+  ok parse " { \"a\" : true , \"b\" : false , \"c\" : null } " (Object [("a", Bool true), ("b", Bool false), ("c", Null)]);
+
   ()
   )
   handle Fail e => (

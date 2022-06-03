@@ -148,7 +148,7 @@ fun parse1 str strlen =
       (fn (sub, idx) => chr #"\"" idx >>= (fn (_, idx) => Ok (sub, idx))) >>=
       (fn (sub, idx) => Ok (String sub, idx))
     fun parse_array_rest acc idx =
-      case chr #"," idx of
+      case chr #"," (skip_ws idx) of
            Ok (_, idx) =>
              parse_value idx >>=
              (fn (next, idx) => parse_array_rest (next :: acc) idx)
@@ -160,26 +160,26 @@ fun parse1 str strlen =
              Ok (item, idx') => parse_array_rest [item] idx'
            | Error (_, idx') => Ok ([], idx')
       ) >>=
-      (fn (items, idx) => (chr #"]" idx) >>= (fn (_, idx) => Ok (items, idx))) >>=
-      (fn (_, idx) => Ok (Array [], idx))
+      (fn (items, idx) => (chr #"]" (skip_ws idx)) >>= (fn (_, idx) => Ok (items, idx))) >>=
+      (fn (items, idx) => Ok (Array (rev items), idx))
     and parse_object_item idx =
       parse_string idx >>=
-      (fn (String key, idx) => (chr #":" idx) >>= (fn (_, idx) => Ok (key, idx))) >>=
+      (fn (String key, idx) => (chr #":" (skip_ws idx)) >>= (fn (_, idx) => Ok (key, idx))) >>=
       (fn (key, idx) =>
         case parse_value idx of
              Ok (value, idx) => Ok ((key, value), idx)
            | Error e => Error e
       )
     and parse_object_rest acc idx =
-      case chr #"," idx of
+      case chr #"," (skip_ws idx) of
            Ok (_, idx) =>
-             parse_object_item idx >>=
+             parse_object_item (skip_ws idx) >>=
              (fn ((key, value), idx) => parse_object_rest ((key, value) :: acc) idx)
          | Error (_, idx) => Ok (rev acc, idx)
     and parse_object idx =
       chr #"{" idx >>=
       (fn (_, idx) =>
-        if peek idx = #"\"" then parse_object_item idx >>=
+        if peek (skip_ws idx) = #"\"" then parse_object_item (skip_ws idx) >>=
           (fn ((key, value), idx) => parse_object_rest [(key, value)] idx)
         else Ok ([], idx)
       ) >>=
