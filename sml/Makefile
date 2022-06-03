@@ -5,7 +5,7 @@ test:
 
 .PHONY: top
 top:
-	rlwrap poly --use json.sml
+	rlwrap poly --use polyml.sml --use json.sml
 
 .PHONY: parser
 parser:
