@@ -3,10 +3,10 @@ datatype ('r, 'e) result =
   | Error of 'e
 
 type number = {
-  integer: Int64.int,
-  fraction: Int64.int,
-  precision: Int64.int,
-  exponent: Int64.int
+  integer: int,
+  fraction: int,
+  precision: int,
+  exponent: int
   }
 
 datatype json =
@@ -91,10 +91,10 @@ fun parse1 str strlen =
          | _ => Error ("Expected false", idx)
     fun make_int ((num, frac, exp), idx) =
       Ok (Number {
-        integer=getOpt (Int64.fromString num, 0),
-        fraction=getOpt (Int64.fromString frac, 0),
-        precision=Int64.fromInt (size frac),
-        exponent=getOpt (Int64.fromString exp, 0)}, idx)
+        integer=getOpt (Int.fromString num, 0),
+        fraction=getOpt (Int.fromString frac, 0),
+        precision=size frac,
+        exponent=getOpt (Int.fromString exp, 0)}, idx)
     fun parse_unsigned idx =
       let
         fun parse_integer idx =

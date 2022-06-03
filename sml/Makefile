@@ -1,12 +1,12 @@
 .PHONY: test
 test:
-	mlton -output test test.mlb
+	mlton -default-type int64 -output test test.mlb
 	./test
 
 .PHONY: top
 top:
-	rlwrap poly --use polyml.sml --use json.sml
+	rlwrap poly --use json.sml
 
 .PHONY: parser
 parser:
-	mlton -output ./parser parser.mlb
+	mlton -default-type int64 -output ./parser parser.mlb
