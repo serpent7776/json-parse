@@ -29,6 +29,12 @@ fun op>>= (r, f) =
        Ok ok => f ok
      | Error e => Error e
 
+infix >>!
+fun op>>! (r, f) =
+  case r of
+       Ok ok => Ok ok
+     | Error e => f e
+
 fun strlen str =
   let
     val len = size str
@@ -98,9 +104,8 @@ fun parse1 str strlen =
     fun parse_unsigned idx =
       let
         fun parse_integer idx =
-          case take Char.isDigit idx of
-               Ok (num, idx') => Ok (num, idx')
-             | _ => Error ("Expected number", idx)
+          take Char.isDigit idx >>!
+          (fn (_, idx) => Error ("Expected number", idx))
         fun parse_fraction (num, idx) =
           case take Char.isDigit idx of
                Ok (frac, idx') => Ok ((num, frac), idx')
