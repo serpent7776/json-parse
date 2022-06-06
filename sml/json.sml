@@ -169,9 +169,8 @@ fun parse1 str strlen =
       parse_string idx >>=
       (fn (String key, idx) => (chr #":" (skip_ws idx)) >>= (fn (_, idx) => Ok (key, idx))) >>=
       (fn (key, idx) =>
-      parse_value idx >>=
-      (fn (value, idx) => Ok ((key, value), idx))
-      )
+        parse_value idx >>=
+        (fn (value, idx) => Ok ((key, value), idx)))
     and parse_object_rest acc idx =
       case chr #"," (skip_ws idx) of
            Ok (_, idx) =>
