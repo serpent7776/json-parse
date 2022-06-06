@@ -131,13 +131,12 @@ fun parse1 str strlen =
     fun parse_neg_integer idx =
       let
         fun parse_integer idx =
-          case parse_unsigned idx of
-               Ok (Number n, idx') => Ok (Number {
+          parse_unsigned idx >>=
+          (fn (Number n, idx) => Ok (Number {
                  integer = ~ (#integer n),
                  fraction = #fraction n,
                  precision = #precision n,
-                 exponent = #exponent n}, idx')
-             | Error e => Error e
+                 exponent = #exponent n}, idx))
         fun parse_minus_integer idx =
           chr #"-" idx >>=
           (fn (_, idx) => parse_integer idx)
