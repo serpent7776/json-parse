@@ -134,9 +134,8 @@ fun parse1 str strlen =
                  exponent = #exponent n}, idx')
              | Error e => Error e
         fun parse_minus_integer idx =
-          case chr #"-" idx of
-               Ok (_, idx') => parse_integer idx'
-             | Error e => Error e
+          chr #"-" idx >>=
+          (fn (_, idx) => parse_integer idx)
       in
         parse_minus_integer idx
       end
@@ -166,9 +165,8 @@ fun parse1 str strlen =
       parse_string idx >>=
       (fn (String key, idx) => (chr #":" (skip_ws idx)) >>= (fn (_, idx) => Ok (key, idx))) >>=
       (fn (key, idx) =>
-        case parse_value idx of
-             Ok (value, idx) => Ok ((key, value), idx)
-           | Error e => Error e
+      parse_value idx >>=
+      (fn (value, idx) => Ok ((key, value), idx))
       )
     and parse_object_rest acc idx =
       case chr #"," (skip_ws idx) of
