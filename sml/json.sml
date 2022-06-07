@@ -46,6 +46,8 @@ fun strlen str =
     proc len
   end
 
+fun s2i str = getOpt (Int.fromString str, 0)
+
 fun parse1 str strlen =
   let
     fun peek idx = String.sub (str, idx)
@@ -95,13 +97,17 @@ fun parse1 str strlen =
       case take Char.isAlpha idx of
            Ok ("false", idx') => Ok (Bool false, idx')
          | _ => Error ("Expected false", idx)
-    fun make_int ((num, frac, exp), idx) =
+    fun intify ((num, frac, exp), idx) =
+      ((s2i num, s2i frac, size frac, s2i exp), idx)
+    fun make_number ((num, frac, prec, exp), idx) =
       Ok (Number {
-        integer=getOpt (Int.fromString num, 0),
-        fraction=getOpt (Int.fromString frac, 0),
-        precision=size frac,
-        exponent=getOpt (Int.fromString exp, 0)}, idx)
-    fun parse_unsigned idx =
+        integer = num,
+        fraction = frac,
+        precision = prec,
+        exponent = exp}, idx)
+    fun make_neg_number ((num, frac, prec, exp), idx) =
+      make_number ((~ num, frac, prec, exp), idx)
+    fun parse_number_parts idx =
       let
         fun parse_integer idx =
           take Char.isDigit idx >>!
@@ -125,18 +131,16 @@ fun parse1 str strlen =
       in
         parse_integer idx >>=
         parse_dot_fraction >>=
-        parse_e_exponent >>=
-        make_int
+        parse_e_exponent
       end
+    fun parse_unsigned idx =
+      parse_number_parts idx >>=
+      (make_number o intify)
     fun parse_neg_integer idx =
       let
         fun parse_integer idx =
-          parse_unsigned idx >>=
-          (fn (Number n, idx) => Ok (Number {
-                 integer = ~ (#integer n),
-                 fraction = #fraction n,
-                 precision = #precision n,
-                 exponent = #exponent n}, idx))
+          parse_number_parts idx >>=
+          (make_neg_number o intify)
         fun parse_minus_integer idx =
           chr #"-" idx >>=
           (fn (_, idx) => parse_integer idx)
