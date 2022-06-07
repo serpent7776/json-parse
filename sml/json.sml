@@ -109,44 +109,33 @@ fun parse1 str strlen =
       make_number ((~ num, frac, prec, exp), idx)
     fun parse_number_parts idx =
       let
-        fun parse_integer idx =
-          take Char.isDigit idx >>!
-          (fn (_, idx) => Error ("Expected number", idx))
         fun parse_fraction (num, idx) =
           case take Char.isDigit idx of
                Ok (frac, idx') => Ok ((num, frac), idx')
              | _ => Ok ((num, ""), idx)
-        fun parse_dot_fraction (num, idx) =
-          case chr #"." idx of
-               Ok (_, idx') => parse_fraction (num, idx')
-             | Error (e, _) => Ok ((num, ""), idx)
         fun parse_exponent ((num, frac), idx) =
             case take Char.isDigit idx of
                  Ok (exp, idx') => Ok ((num, frac, exp), idx')
                | Error (e, _) => Error ("Expected exponent", idx)
-        fun parse_e_exponent ((num, frac), idx) =
-          case chr #"e" idx of
-               Ok (_, idx') => parse_exponent ((num, frac), idx')
-             | _ => Ok ((num, frac, ""), idx)
       in
-        parse_integer idx >>=
-        parse_dot_fraction >>=
-        parse_e_exponent
+        take Char.isDigit idx >>!
+        (fn (_, idx) => Error ("Expected number", idx)) >>=
+        (fn (num, idx) =>
+          case chr #"." idx of
+              Ok (_, idx') => parse_fraction (num, idx')
+            | Error _ => Ok ((num, ""), idx)) >>=
+        (fn ((num, frac), idx) =>
+          case chr #"e" idx of
+              Ok (_, idx') => parse_exponent ((num, frac), idx')
+            | Error _ => Ok ((num, frac, ""), idx))
       end
     fun parse_unsigned idx =
       parse_number_parts idx >>=
       (make_number o intify)
     fun parse_neg_integer idx =
-      let
-        fun parse_integer idx =
-          parse_number_parts idx >>=
-          (make_neg_number o intify)
-        fun parse_minus_integer idx =
-          chr #"-" idx >>=
-          (fn (_, idx) => parse_integer idx)
-      in
-        parse_minus_integer idx
-      end
+      chr #"-" idx >>=
+      (fn (_, idx) => parse_number_parts idx) >>=
+      (make_neg_number o intify)
     fun ending_quote ch prev = ch = #"\"" andalso prev <> #"\\"
     fun non_ending_quote ch prev = not (ending_quote ch prev)
     fun parse_string idx =
