@@ -141,8 +141,8 @@ fun parse1 str strlen =
     fun parse_string idx =
       chr #"\"" idx >>=
       (fn (_, idx) => ask2 non_ending_quote idx) >>=
-      (fn (sub, idx) => chr #"\"" idx >>= (fn (_, idx) => Ok (sub, idx))) >>=
-      (fn (sub, idx) => Ok (String sub, idx))
+      (fn (sub, idx) => chr #"\"" idx >>=
+        (fn (_, idx) => Ok (String sub, idx)))
     fun parse_array_rest acc idx =
       case chr #"," (skip_ws idx) of
            Ok (_, idx) =>
@@ -156,14 +156,15 @@ fun parse1 str strlen =
              Ok (item, idx') => parse_array_rest [item] idx'
            | Error (_, idx') => Ok ([], idx')
       ) >>=
-      (fn (items, idx) => (chr #"]" (skip_ws idx)) >>= (fn (_, idx) => Ok (items, idx))) >>=
-      (fn (items, idx) => Ok (Array (rev items), idx))
+      (fn (items, idx) => chr #"]" (skip_ws idx) >>=
+        (fn (_, idx) => Ok (Array (rev items), idx))
+      )
     and parse_object_item idx =
       parse_string idx >>=
-      (fn (String key, idx) => (chr #":" (skip_ws idx)) >>= (fn (_, idx) => Ok (key, idx))) >>=
-      (fn (key, idx) =>
-        parse_value idx >>=
-        (fn (value, idx) => Ok ((key, value), idx)))
+      (fn (String key, idx) => chr #":" (skip_ws idx) >>=
+        (fn (_, idx) =>
+          parse_value idx >>=
+          (fn (value, idx) => Ok ((key, value), idx))))
     and parse_object_rest acc idx =
       case chr #"," (skip_ws idx) of
            Ok (_, idx) =>
@@ -177,8 +178,8 @@ fun parse1 str strlen =
           (fn ((key, value), idx) => parse_object_rest [(key, value)] idx)
         else Ok ([], idx)
       ) >>=
-      (fn (items, idx) => (chr #"}" idx) >>= (fn (_, idx) => Ok (items, idx))) >>=
-      (fn (items, idx) => Ok (Object items, idx))
+      (fn (items, idx) => chr #"}" idx >>=
+        (fn (_, idx) => Ok (Object items, idx)))
     and parse_value idx =
       let
         val idx = skip_ws idx
