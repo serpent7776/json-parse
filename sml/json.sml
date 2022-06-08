@@ -138,11 +138,14 @@ fun parse1 str strlen =
       (make_neg_number o intify)
     fun ending_quote ch prev = ch = #"\"" andalso prev <> #"\\"
     fun non_ending_quote ch prev = not (ending_quote ch prev)
-    fun parse_string idx =
+    fun parse_string_raw idx =
       chr #"\"" idx >>=
       (fn (_, idx) => ask2 non_ending_quote idx) >>=
       (fn (sub, idx) => chr #"\"" idx >>=
-        (fn (_, idx) => Ok (String sub, idx)))
+        (fn (_, idx) => Ok (sub, idx)))
+    fun parse_string idx =
+      parse_string_raw idx >>=
+      (fn (str, idx) => Ok (String str, idx))
     fun parse_array_rest acc idx =
       case chr #"," (skip_ws idx) of
            Ok (_, idx) =>
@@ -160,8 +163,8 @@ fun parse1 str strlen =
         (fn (_, idx) => Ok (Array (rev items), idx))
       )
     and parse_object_item idx =
-      parse_string idx >>=
-      (fn (String key, idx) => chr #":" (skip_ws idx) >>=
+      parse_string_raw idx >>=
+      (fn (key, idx) => chr #":" (skip_ws idx) >>=
         (fn (_, idx) =>
           parse_value idx >>=
           (fn (value, idx) => Ok ((key, value), idx))))
