@@ -225,4 +225,68 @@ fun parse str =
     else Error ("Empty string", 0)
   end
 
+fun escape ch =
+  if ch = #"\"" then "\\\""
+  else str ch
+
+fun print_number {integer, fraction, precision, exponent} =
+  (print (Int.toString integer);
+  if fraction <> 0 then
+    (print ".";
+    print (Int.toString fraction))
+  else ();
+  if exponent <> 0 then
+    (print "e";
+    print (Int.toString exponent))
+  else ())
+
+fun print_string str =
+  (print "\"";
+  print (String.translate escape str);
+  print "\"")
+
+fun print_array [] =
+    print "[]"
+  | print_array [item] =
+    (print "[";
+    print_json item;
+    print "]")
+  | print_array (item :: tl) =
+    (print "[";
+    print_json item;
+    print_array_items tl;
+    print "]")
+and print_array_items [] = ()
+  | print_array_items (hd :: tl) =
+    (print ", ";
+    print_json hd;
+    print_array_items tl)
+and print_object [] =
+    print "{}"
+  | print_object [item] =
+    (print "{";
+    print_object_item item;
+    print "}")
+  | print_object (item :: tl) =
+    (print "{";
+    print_object_item item;
+    print_object_items tl;
+    print "}")
+and print_object_item (key, value) =
+    (print_string key;
+    print ": ";
+    print_json value)
+and print_object_items [] = ()
+  | print_object_items (item :: tl) =
+    (print ", ";
+    print_object_item item;
+    print_object_items tl)
+and print_json Null = print "null"
+  | print_json (Bool false) = print "false"
+  | print_json (Bool true) = print "true"
+  | print_json (Number n) = print_number n
+  | print_json (String s) = print_string s
+  | print_json (Array a) = print_array a
+  | print_json (Object obj) = print_object obj
+
 fun main () = ()
