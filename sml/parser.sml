@@ -4,6 +4,6 @@ let
   val str = TextIO.inputAll file
 in
   case parse str of
-       Ok (json, idx) => print "OK\n"
+       Ok (json, idx) => print_json json
      | Error (e, idx) => (print e; print " at byte "; (print o Int.toString) idx; print "\n")
 end;
