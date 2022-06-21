@@ -210,11 +210,10 @@ fun parse1 str strlen =
         else Error ("Out of bounds read attempt", idx)
       end
   in
-    case parse_value 0 of
-         e as Error _ => e
-       | Ok (v, idx) =>
-           if idx = strlen then Ok (v, idx)
-           else Error ("garbage found at the end of string", idx)
+    parse_value 0 >>=
+    (fn (v, idx) =>
+      if idx = strlen then Ok (v, idx)
+      else Error ("garbage found at the end of string", idx))
   end
 
 fun parse str =
