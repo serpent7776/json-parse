@@ -5,7 +5,7 @@ test:
 
 .PHONY: top
 top:
-	rlwrap poly --eval 'PolyML.Compiler.debug := true' --eval 'open PolyML.Debug' --use json.sml
+	rlwrap poly --eval 'PolyML.Compiler.debug := true' --eval 'open PolyML.Debug' --eval 'breakEx Subscript' --use json.sml
 
 .PHONY: parser
 parser:
