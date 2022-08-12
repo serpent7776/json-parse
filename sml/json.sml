@@ -51,32 +51,38 @@ fun s2i str = getOpt (Int.fromString str, 0)
 fun parse1 str strlen =
   let
     fun peek idx = String.sub (str, idx)
+    fun is_alpha idx =
+      case Char.isAlpha (peek idx) of
+           true => Ok (SOME (peek idx), idx + 1)
+         | false => Ok (NONE, idx)
+    fun is_digit idx =
+      case Char.isDigit (peek idx) of
+           true => Ok (SOME (peek idx), idx + 1)
+         | false => Ok (NONE, idx)
     fun take f idx =
       let
-        fun proc last =
-          if last < strlen andalso f (peek last) then proc (last + 1)
-          else last
-        val last = proc idx
-        val len = last - idx
+        fun proc acc last =
+          if not (last < strlen) then Ok (implode (rev acc), last)
+          else case f last of
+                    Ok (SOME ch, idx) => proc (ch :: acc) idx
+                  | Ok (NONE, _) => Ok (implode (rev acc), last)
+                  | Error e => e
       in
-        if len = 0 then Error ("Empty string parsed", idx)
-        else Ok (String.substring (str, idx, len), last)
+        proc [] idx >>=
+          (fn (str, idx') =>
+            if idx' - idx = 0 then Error ("Empty string parsed", idx)
+            else Ok (str, idx'))
       end
-    fun ask2 f idx =
+    fun ask f idx =
       let
-        fun proc idx' prev =
-          if idx' < strlen andalso f (peek idx') prev then proc (idx' + 1) (peek idx')
-          else idx'
-          (*
-           * Accessing idx - 1 should always be safe, because we always
-           * match on first char to decide which parse_* function and we
-           * ever call ask on the following chars
-           *)
-        val last = proc idx (peek (idx - 1))
-        val len = last - idx
-        val sub = String.substring (str, idx, len)
+        fun proc acc last =
+          if not (last < strlen) then Ok (implode (rev acc), last)
+          else case f last of
+                    Ok (SOME ch, idx) => proc (ch :: acc) idx
+                  | Ok (NONE, _) => Ok (implode (rev acc), last)
+                  | Error e => Error e
       in
-        Ok (sub, last)
+        proc [] idx
       end
     fun skip f idx =
       if idx < strlen andalso f (peek idx) then skip f (idx + 1)
@@ -86,15 +92,15 @@ fun parse1 str strlen =
       if idx < strlen andalso peek idx = ch then Ok (ch, idx + 1)
       else Error ("Expectetd " ^ Char.toString ch, idx)
     fun parse_null idx =
-      case take Char.isAlpha idx of
+      case take is_alpha idx of
            Ok ("null", idx') => Ok (Null, idx')
          | _ => Error ("Expected null", idx)
     fun parse_true idx =
-      case take Char.isAlpha idx of
+      case take is_alpha idx of
            Ok ("true", idx') => Ok (Bool true, idx')
          | _ => Error ("Expected true", idx)
     fun parse_false idx =
-      case take Char.isAlpha idx of
+      case take is_alpha idx of
            Ok ("false", idx') => Ok (Bool false, idx')
          | _ => Error ("Expected false", idx)
     fun intify ((num, frac, exp), idx) =
@@ -110,15 +116,15 @@ fun parse1 str strlen =
     fun parse_number_parts idx =
       let
         fun parse_fraction (num, idx) =
-          case take Char.isDigit idx of
+          case take is_digit idx of
                Ok (frac, idx') => Ok ((num, frac), idx')
              | _ => Ok ((num, ""), idx)
         fun parse_exponent ((num, frac), idx) =
-            case take Char.isDigit idx of
+            case take is_digit idx of
                  Ok (exp, idx') => Ok ((num, frac, exp), idx')
                | Error (e, _) => Error ("Expected exponent", idx)
       in
-        take Char.isDigit idx >>!
+        take is_digit idx >>!
         (fn (_, idx) => Error ("Expected number", idx)) >>=
         (fn (num, idx) =>
           case chr #"." idx of
@@ -137,10 +143,24 @@ fun parse1 str strlen =
       (fn (_, idx) => parse_number_parts idx) >>=
       (make_neg_number o intify)
     fun ending_quote ch prev = ch = #"\"" andalso prev <> #"\\"
-    fun non_ending_quote ch prev = not (ending_quote ch prev)
+    fun string_char idx =
+      case (peek idx) of
+           #"\\" =>
+            (case peek (idx + 1) of
+                  #"\"" => Ok (SOME #"\"", idx + 2)
+                | #"\\" => Ok (SOME #"\\", idx + 2)
+                | #"/" => Ok (SOME #"/", idx + 2)
+                | #"b" => Ok (SOME #"\b", idx + 2)
+                | #"f" => Ok (SOME #"\f", idx + 2)
+                | #"n" => Ok (SOME #"\n", idx + 2)
+                | #"r" => Ok (SOME #"\r", idx + 2)
+                | #"t" => Ok (SOME #"\t", idx + 2)
+                | c => Error ("Invalid backslash sequence \\" ^ (String.str c), idx))
+         | #"\"" => Ok (NONE, idx + 1)
+         | c => Ok (SOME c, idx + 1)
     fun parse_string_raw idx =
       chr #"\"" idx >>=
-      (fn (_, idx) => ask2 non_ending_quote idx) >>=
+      (fn (_, idx) => ask string_char idx) >>=
       (fn (sub, idx) => chr #"\"" idx >>=
         (fn (_, idx) => Ok (sub, idx)))
     fun parse_string idx =

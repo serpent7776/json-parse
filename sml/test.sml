@@ -57,13 +57,15 @@ val _ = (
   ok parse "\"\"" (String "");
   fails parse "\"";
   ok parse "\"foobar\"" (String "foobar");
-  ok parse "\"foo\\bar\"" (String "foo\\bar");
+  ok parse "\"a\\nb\"" (String "a\nb");
+  ok parse "\"foo\\\\bar\"" (String "foo\\bar");
   ok parse "\"foo bar\"" (String "foo bar");
+  ok parse "\"foo/bar\"" (String "foo/bar");
   fails parse "\"foobar";
   fails parse "\"foo\\\"bar";
   ok parse "\"a b c\"" (String "a b c");
   ok parse "\" a b c \"" (String " a b c ");
-  ok parse "\"foo\\\"bar\"" (String "foo\\\"bar");
+  ok parse "\"foo\\\"bar\"" (String "foo\"bar");
 
   (* arrays *)
   ok parse "[]" (Array []);
