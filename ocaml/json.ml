@@ -171,51 +171,37 @@ let parse1 str strlen =
                 Ok (Number (make_number integer fraction precision exponent), idx)
         in
         let parse_string idx =
-                let invalid_string_start_error idx' =
-                        Error ({|String must start with "|}, idx')
-                in
-                let invalid_string_end_error idx' =
-                        Error ({|String must end with "|}, idx')
-                in
-                let make_string s idx =
-                        Ok (String s, idx)
-                in
-                let parse_string_body idx' =
-                        let str, idx'2 = ask2 idx' non_ending_quote in
-                        ppi (chr '"') (make_string str) invalid_string_end_error idx'2
-                in
-                ppi (chr '"') parse_string_body invalid_string_start_error idx
+                match chr '"' idx with
+                | Error (_, idx) -> Error ({|String must start with "|}, idx)
+                | Ok (_, idx) ->
+                        let str, idx = ask2 idx non_ending_quote in
+                        match chr '"' idx with
+                        | Error (_, idx) -> Error ({|String must end with "|}, idx)
+                        | Ok (_, idx) -> Ok (String str, idx)
         in
         let rec parse_array idx =
-                let make_empty_array _ idx' =
-                        let idx' = skip_ws idx' in
-                        let= (_, idx'2) = chr ']' idx' in
-                        Ok (Array [], idx'2)
+                let rec parse_next_array_item acc idx =
+                        let idx = skip_ws idx in
+                        match chr ',' idx with
+                        | Error (_, idx) -> Ok (List.rev acc, idx)
+                        | Ok (_, idx) ->
+                                match parse_value idx with
+                                | Error (_, idx) -> Error ("Failed to parse array element", idx)
+                                | Ok (value, idx) ->
+                                        parse_next_array_item (value :: acc) idx
                 in
-                let invalid_array_element_error _ idx' =
-                        Error ("Failed to parse array element", idx')
+                let parse_array_items value idx =
+                        parse_next_array_item [value] idx
                 in
-                let rec parse_next_array_item acc idx' =
-                        let idx' = skip_ws idx' in
-                        ppi (chr ',') (
-                                ppx parse_value
-                                        (fun value idx'2 -> parse_next_array_item (value :: acc) idx'2)
-                                        invalid_array_element_error
-                                )
-                                (fun idx'2 -> Ok (List.rev acc, idx'2))
-                                idx'
+                let= (_, idx) = chr '[' idx in
+                let= (items, idx) =
+                        match parse_value idx with
+                        | Error (_, idx) -> Ok ([], idx)
+                        | Ok (value, idx) -> parse_array_items value idx
                 in
-                let parse_array_items value idx' =
-                        parse_next_array_item [value] idx'
-                in
-                let parse_array_rest value idx' =
-                        let= (values, idx'2) = parse_array_items value idx' in
-                        let idx'2 = skip_ws idx'2 in
-                        let= (_, idx'3) = chr ']' idx'2 in
-                        Ok (Array values, idx'3)
-                in
-                let= (_, idx') = chr '[' idx in
-                ppx parse_value parse_array_rest make_empty_array idx'
+                let idx = skip_ws idx in
+                let= (_, idx) = chr ']' idx in
+                Ok (Array items, idx)
         and parse_object idx =
                 let invalid_object_value_error _ idx' =
                         Error ("Failed to parse object element", idx')
