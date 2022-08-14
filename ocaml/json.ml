@@ -142,47 +142,33 @@ let parse1 str strlen =
         in
         let parse_number idx =
                 (* parse sign *)
-                let sign, idx' =
+                let sign, idx =
                         match chr '-' idx with
                         | Ok (_, idx') -> -1, idx'
                         | Error _ -> 1, idx
                 in
-                let parse_number_exponent idx =
-                        let no_exponent_digits_error _ idx' =
-                                Error ("Missing digits after exponent", idx')
-                        in
-                        let make_exponent e idx' =
-                                Ok (Some (int_of_string e), idx')
-                        in
-                        ppi (chr 'e')
-                                (ppx (take is_digit) make_exponent no_exponent_digits_error)
-                                oknone
-                                idx
-                in
-                let parse_dot_fraction idx =
-                        let make_fraction f idx' =
-                                let precision = String.length f in
-                                (Some (int_of_string f, precision), idx')
-                        in
-                        ppi (chr '.')
-                                (ppx (take is_digit) make_fraction none2)
-                                none
-                                idx
-                in
                 (* parse integral part *)
-                let= (n, idx') = take is_digit idx' in
+                let= (n, idx) = take is_digit idx in
                 let integer = sign * int_of_string n in
                 (* parse fraction part *)
-                let fraction, precision, idx'2 = match parse_dot_fraction idx' with
-                | (None, idx'2) -> 0, 0, idx'2
-                | (Some (fraction, precision), idx'2) -> fraction, precision, idx'2
+                let (fraction, precision, idx) =
+                        match chr '.' idx with
+                        | Error (_, idx) -> (0, 0, idx)
+                        | Ok (_, idx) ->
+                                match take is_digit idx with
+                                | Error (_, idx) -> (0, 0, idx)
+                                | Ok (n, idx) -> (int_of_string n, String.length n, idx)
                 in
                 (* parse exponent *)
-                match parse_number_exponent idx'2 with
-                | Error _ as err -> err
-                | Ok (None, idx'3) -> Ok (Number (make_decimal integer fraction precision), idx'3)
-                | Ok (Some exponent, idx'3) ->
-                        Ok (Number (make_number integer fraction precision exponent), idx'3)
+                let= (exponent, idx) =
+                        match chr 'e' idx with
+                        | Error (_, idx) -> Ok (0, idx)
+                        | Ok (_, idx) ->
+                                match take is_digit idx with
+                                | Error (_, idx) -> Error ("Exponent required", idx)
+                                | Ok (n, idx) -> Ok (int_of_string n, idx)
+                in
+                Ok (Number (make_number integer fraction precision exponent), idx)
         in
         let parse_string idx =
                 let invalid_string_start_error idx' =
