@@ -11,3 +11,7 @@ parser: test
 top:
 	ocamlmktop -o jsontop json.ml
 	rlwrap ./jsontop
+
+.PHONY: utop
+utop:
+	utop utop.ml
