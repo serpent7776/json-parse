@@ -203,51 +203,46 @@ let parse1 str strlen =
                 let= (_, idx) = chr ']' idx in
                 Ok (Array items, idx)
         and parse_object idx =
-                let invalid_object_value_error _ idx' =
-                        Error ("Failed to parse object element", idx')
-                in
-                let make_object_item key value idx' =
-                        Ok ((key, value), idx')
-                in
-                let parse_object_item idx' =
-                        match parse_string idx' with
+                let parse_object_item idx =
+                        match parse_string idx with
                         | Error _ as err -> err
-                        | Ok (String key, idx'2) -> (
-                                let idx'2 = skip_ws idx'2 in
-                                let= (_, idx'3) = chr ':' idx'2 in
-                                let idx'3 = skip_ws idx'3 in
-                                ppx (parse_value) (make_object_item key) invalid_object_value_error idx'3
+                        | Ok (String key, idx) -> (
+                                let idx = skip_ws idx in
+                                let= (_, idx) = chr ':' idx in
+                                let idx = skip_ws idx in
+                                match parse_value idx with
+                                | Error (_, idx) -> Error ("Failed to parse object element", idx)
+                                | Ok (value, idx) -> Ok ((key, value), idx)
                         )
-                        | Ok _ -> Error ("Should never happen", idx')
+                        | Ok _ -> Error ("Should never happen", idx)
                 in
-                let rec parse_next_object_item acc idx' =
-                        ppi (chr ',') (fun idx'2 ->
-                                        let idx'2 = skip_ws idx'2 in
-                                        let= (item, idx'3) = parse_object_item idx'2 in
-                                        let idx'3 = skip_ws idx'3 in
-                                        parse_next_object_item (item :: acc) idx'3
-                                )
-                                (fun idx'2 -> Ok (List.rev acc, idx'2))
-                                idx'
+                let rec parse_next_object_item acc idx =
+                        match chr ',' idx with
+                        | Error (_, idx) -> Ok (List.rev acc, idx)
+                        | Ok (_, idx) ->
+                                 let idx = skip_ws idx in
+                                 let= (item, idx) = parse_object_item idx in
+                                 let idx = skip_ws idx in
+                                 parse_next_object_item (item :: acc) idx
                 in
                 let parse_object_items item idx' =
                         parse_next_object_item [item] idx'
                 in
-                let parse_object_rest item idx' =
-                        let idx' = skip_ws idx' in
-                        let= (items, idx'2) = parse_object_items item idx' in
-                        let idx'2 = skip_ws idx'2 in
-                        let= (_, idx'3) = chr '}' idx'2 in
-                        Ok (Object items, idx'3)
+                let parse_object_rest item idx =
+                        let idx = skip_ws idx in
+                        let= (items, idx) = parse_object_items item idx in
+                        Ok (items, idx)
                 in
-                let make_empty_object _ idx' =
-                        let idx' = skip_ws idx' in
-                        let= (_, idx'2) = chr '}' idx' in
-                        Ok (Object [], idx'2)
+                let= (_, idx) = chr '{' idx in
+                let idx = skip_ws idx in
+                let= (pairs, idx) =
+                        match parse_object_item idx with
+                        | Error (_, idx) -> Ok ([], idx)
+                        | Ok (item, idx) -> parse_object_rest item idx
                 in
-                let= (_, idx') = chr '{' idx in
-                let idx' = skip_ws idx' in
-                ppx parse_object_item parse_object_rest make_empty_object idx'
+                let idx = skip_ws idx in
+                let= (_, idx) = chr '}' idx in
+                Ok (Object pairs, idx)
         and parse_value idx =
                 let idx = skip_ws idx in
                 if idx < strlen then
