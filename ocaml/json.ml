@@ -71,21 +71,6 @@ let (let=) v f =
         | Error _ as err -> err
         | Ok ok -> f ok
 
-let ppi parse ok_f err_f idx =
-        match parse idx with
-        | Ok (_, idx') -> ok_f idx'
-        | Error (_, idx') -> err_f idx'
-
-let ppx parse ok_f err_f idx =
-        match parse idx with
-        | Ok (v, idx) -> ok_f v idx
-        | Error (err, idx) -> err_f err idx
-
-let none idx = (None, idx)
-let none2 _ idx = (None, idx)
-
-let oknone idx = Ok (None, idx)
-
 (** Parse non empty string into json *)
 let parse1 str strlen =
         let peek idx = str.[idx]
