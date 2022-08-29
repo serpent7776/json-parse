@@ -50,9 +50,6 @@ let is_ws = function
         | '\n' -> true
         | _ -> false
 
-let end_quote ch prev = ch = '"' && prev <> '\\'
-let non_ending_quote ch prev = not (end_quote ch prev)
-
 let sofc chr =
         String.make 1 chr
 
@@ -86,20 +83,17 @@ let parse1 str strlen =
                 | 0 -> Error ("Empty string parsed", idx)
                 | _ -> Ok (String.sub str idx len, last)
         in
-        let ask2 idx f =
-                let rec proc idx prev =
-                        if idx < strlen && f (peek idx) prev then proc (idx + 1) (peek idx)
-                        else idx
+        let ask f idx =
+                let rec proc acc idx =
+                        if idx < strlen then
+                                match f idx with
+                                | Ok (Some c, idx') -> proc (acc ^ (sofc c)) idx'
+                                | Ok (None, idx') -> Ok (acc, idx')
+                                | Error e -> Error e
+                        else Ok (acc, idx)
                 in
-                (*
-                 * Accessing idx - 1 should always be safe, because we always
-                 * match on first char to decide which parse_* function and we
-                 * ever call ask on the following chars
-                 *)
-                let prev_ch = peek (idx - 1) in
-                let last = proc idx prev_ch in
-                let len = last - idx in
-                (String.sub str idx len, last)
+                let= (data, idx') = proc "" idx in
+                Ok (data, idx')
         in
         let skip f idx =
                 let rec proc last =
@@ -156,10 +150,26 @@ let parse1 str strlen =
                 Ok (Number (make_number integer fraction precision exponent), idx)
         in
         let parse_string idx =
+                let parse_string_char idx =
+                        match peek idx with
+                        | '"' -> Ok (None, idx)
+                        | '\\' ->
+                                (match peek (idx + 1) with
+                                | '"' -> Ok (Some '"', idx + 2)
+                                | '\\' -> Ok (Some '\\', idx + 2)
+                                | '/' -> Ok (Some '/', idx + 2)
+                                | 'b' -> Ok (Some '\b', idx + 2)
+                                | 'f' -> Ok (Some '\014', idx + 2) (* '\f' not supported by OCaml? *)
+                                | 'n' -> Ok (Some '\n', idx + 2)
+                                | 'r' -> Ok (Some '\r', idx + 2)
+                                | 't' -> Ok (Some '\t', idx + 2)
+                                | c -> Error ("Unrecognised escape sequance \\" ^ (sofc c), idx))
+                        | c -> Ok (Some c, idx + 1)
+                in
                 match chr '"' idx with
                 | Error (_, idx) -> Error ({|String must start with "|}, idx)
                 | Ok (_, idx) ->
-                        let str, idx = ask2 idx non_ending_quote in
+                        let= str, idx = ask parse_string_char idx in
                         match chr '"' idx with
                         | Error (_, idx) -> Error ({|String must end with "|}, idx)
                         | Ok (_, idx) -> Ok (String str, idx)

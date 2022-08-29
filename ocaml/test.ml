@@ -40,13 +40,19 @@ let () =
         assert (fails parse "-1.y");
 
         (* strings *)
-        assert (ok parse {|"foobar"|} (String "foobar"));
-        assert (fails parse {|"|});
-        assert (fails parse {|"foobar|});
         assert (ok parse {|""|} (String ""));
+        assert (fails parse {|"|});
+        assert (ok parse {|"foobar"|} (String "foobar"));
+        assert (ok parse {|"a\nb"|} (String "a\nb"));
+        assert (ok parse {|"foo\\bar"|} (String {|foo\bar|}));
+        assert (ok parse {|"foo bar"|} (String "foo bar"));
+        assert (ok parse {|"foo/bar"|} (String "foo/bar"));
+        assert (fails parse {|"foobar|});
         assert (fails parse {|"foo"bar|});
+        assert (fails parse {|"foo\"bar|});
         assert (ok parse {|"a b c"|} (String "a b c"));
         assert (ok parse {|" a b c "|} (String " a b c "));
+        assert (ok parse {|"foo\"bar"|} (String {|foo"bar|}));
 
         (* arrays *)
         assert (ok parse "[null]" (Array [ Null ]));
