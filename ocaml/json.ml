@@ -231,9 +231,11 @@ let parse1 str strlen =
                 let= (_, idx) = chr '{' idx in
                 let idx = skip_ws idx in
                 let= (pairs, idx) =
-                        match parse_object_item idx with
-                        | Error (_, idx) -> Ok ([], idx)
-                        | Ok (item, idx) -> parse_object_rest item idx
+                        if peek idx = '"' then
+                                let= (item, idx) = parse_object_item idx in
+                                parse_object_rest item idx
+                        else
+                                Ok ([], idx)
                 in
                 let idx = skip_ws idx in
                 let= (_, idx) = chr '}' idx in
