@@ -150,7 +150,7 @@ let parse1 str strlen =
                 Ok (Number (make_number integer fraction precision exponent), idx)
         in
         let parse_string idx =
-                let parse_string_char idx =
+                let string_char idx =
                         match peek idx with
                         | '"' -> Ok (None, idx)
                         | '\\' ->
@@ -169,7 +169,7 @@ let parse1 str strlen =
                 match chr '"' idx with
                 | Error (_, idx) -> Error ({|String must start with "|}, idx)
                 | Ok (_, idx) ->
-                        let= str, idx = ask parse_string_char idx in
+                        let= str, idx = ask string_char idx in
                         match chr '"' idx with
                         | Error (_, idx) -> Error ({|String must end with "|}, idx)
                         | Ok (_, idx) -> Ok (String str, idx)
