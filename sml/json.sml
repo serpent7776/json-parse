@@ -201,7 +201,7 @@ fun parse1 str strlen =
           (fn ((key, value), idx) => parse_object_rest [(key, value)] idx)
         else Ok ([], idx)
       ) >>=
-      (fn (items, idx) => chr #"}" idx >>=
+      (fn (items, idx) => chr #"}" (skip_ws idx) >>=
         (fn (_, idx) => Ok (Object items, idx)))
     and parse_value idx =
       let
