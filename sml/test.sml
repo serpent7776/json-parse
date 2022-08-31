@@ -62,6 +62,7 @@ val _ = (
   ok parse "\"foo bar\"" (String "foo bar");
   ok parse "\"foo/bar\"" (String "foo/bar");
   fails parse "\"foobar";
+  fails parse "\"foo\"bar";
   fails parse "\"foo\\\"bar";
   ok parse "\"a b c\"" (String "a b c");
   ok parse "\" a b c \"" (String " a b c ");
@@ -88,11 +89,11 @@ val _ = (
     Number {integer = 3, fraction = 0, precision = 0, exponent = 0}
   ]);
   fails parse "[\"";
-  ok parse "[true, false, null, 0]" (Array [
+  ok parse "[true,false,null,0]" (Array [
     Bool true, Bool false, Null,
     Number {integer = 0, fraction = 0, precision = 0, exponent = 0}
   ]);
-  ok parse "[[], []]" (Array [Array [], Array []]);
+  ok parse "[[],[]]" (Array [Array [], Array []]);
   fails parse "[1,";
   fails parse "[1,]";
   fails parse "[1,2,]";
@@ -100,6 +101,17 @@ val _ = (
 
   (* objects *)
   ok parse "{}" (Object []);
+  ok parse "{\"1\":1}" (Object [ ("1", Number {integer = 1, fraction = 0, precision = 0, exponent = 0}) ]);
+  ok parse "{\"foo\":\"bar\"}" (Object [ ("foo", String "bar") ]);
+  ok parse "{\"\":\"\"}" (Object [ ("", String "") ]);
+  ok parse "{\"12\":[]}" (Object [ ("12", Array [ ] ) ]);
+  ok parse "{\"a\":1,\"b\":2,\"c\":3}" (Object [
+          ("a", Number {integer = 1, fraction = 0, precision = 0, exponent = 0} ),
+          ("b", Number {integer = 2, fraction = 0, precision = 0, exponent = 0} ),
+          ("c", Number {integer = 3, fraction = 0, precision = 0, exponent = 0} )
+  ]);
+  ok parse "{\"x\":9.8e7}" (Object [ ("x", Number {integer = 9, fraction = 8, precision = 1, exponent = 7} ) ]);
+  fails parse "{\"1\":1";
   fails parse "{\"foo\"}";
   fails parse "{\"foo\":}";
 
@@ -113,6 +125,8 @@ val _ = (
   ok parse " [ true, false, null ] " (Array [Bool true, Bool false, Null]);
   ok parse " [ true , false , null ] " (Array [Bool true, Bool false, Null]);
   ok parse " { \"a\" : true , \"b\" : false , \"c\" : null } " (Object [("a", Bool true), ("b", Bool false), ("c", Null)]);
+  ok parse " {  } " (Object [ ] );
+  ok parse " [  ] " (Array [ ] );
 
   ()
   )

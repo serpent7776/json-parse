@@ -55,13 +55,14 @@ let () =
         assert (ok parse {|"foo\"bar"|} (String {|foo"bar|}));
 
         (* arrays *)
+        assert (ok parse "[]" (Array [ ]));
         assert (ok parse "[null]" (Array [ Null ]));
         assert (ok parse "[[null]]" (Array [ Array [ Null ] ]));
         assert (ok parse "[true]" (Array [ (Bool true) ]));
         assert (ok parse "[false]" (Array [ (Bool false) ]));
+        assert (ok parse "[true, false]" (Array [Bool true; Bool false]));
         assert (ok parse "[1.2]" (Array [ (Number {integer = 1; fraction = 2; precision = 1; exponent = 0}) ]));
-        assert (ok parse "[\"abc\"]" (Array [ (String "abc") ]));
-        assert (ok parse "[]" (Array [ ]));
+        assert (ok parse {|["abc"]|} (Array [ (String "abc") ]));
         assert (ok parse "[[[]]]" (Array [ Array [ Array [ ] ] ]));
         assert (ok parse "[[[\"a\"]]]" (Array [ Array [ Array [ String "a" ] ] ]));
         assert (fails parse "[");
@@ -74,7 +75,10 @@ let () =
                 Number {integer = 3; fraction = 0; precision = 0; exponent = 0};
         ]));
         assert (fails parse {|["|});
-        assert (ok parse "[true,false,null,0]" (Array [ (Bool true); (Bool false); Null; Number {integer = 0; fraction = 0; precision = 0; exponent = 0} ]));
+        assert (ok parse "[true,false,null,0]" (Array [
+                (Bool true); (Bool false); Null;
+                Number {integer = 0; fraction = 0; precision = 0; exponent = 0}
+        ]));
         assert (ok parse "[[],[]]" (Array [ Array [ ]; Array [ ] ]));
         assert (fails parse "[1,");
         assert (fails parse "[1,]");
@@ -94,15 +98,18 @@ let () =
         ]));
         assert (ok parse {|{"x":9.8e7}|} (Object [ ("x", Number {integer = 9; fraction = 8; precision = 1; exponent = 7} ) ]));
         assert (fails parse {|{"1":1|});
+        assert (fails parse {|{"foo"}|});
+        assert (fails parse {|{"foo":}|});
 
         (* values with spaces *)
         assert (fails parse "   ");
         assert (fails parse " [  ");
         assert (fails parse " ]  ");
-        assert (ok parse "   null  " Null);
-        assert (ok parse " true " (Bool true));
-        assert (ok parse "  false " (Bool false));
+        assert (ok parse "   null   " Null);
+        assert (ok parse "   true   " (Bool true));
+        assert (ok parse "  false  " (Bool false));
         assert (ok parse " [ true, false, null ] " (Array [ (Bool true); (Bool false); Null ]));
+        assert (ok parse " [ true , false , null ] " (Array [ (Bool true); (Bool false); Null ]));
         assert (ok parse {| { "a" : true , "b" : false , "c" : null } |} (Object [ ("a", Bool true); ("b", Bool false); ("c", Null) ] ));
         assert (ok parse {| {  } |} (Object [ ] ));
         assert (ok parse {| [  ] |} (Array [ ] ));
