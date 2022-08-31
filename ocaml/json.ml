@@ -48,6 +48,7 @@ let is_ws = function
         | ' ' -> true
         | '\t' -> true
         | '\n' -> true
+        | '\r' -> true
         | _ -> false
 
 let sofc chr =

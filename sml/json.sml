@@ -21,6 +21,7 @@ withtype dict = (string * json) list
 fun is_ws #" " = true
   | is_ws #"\t" = true
   | is_ws #"\n" = true
+  | is_ws #"\r" = true
   | is_ws _ = false
 
 infix >>=
