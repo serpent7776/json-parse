@@ -15,3 +15,7 @@ top:
 .PHONY: utop
 utop:
 	utop utop.ml
+
+.PHONY: parser.byte
+parser.byte:
+	ocamlc -o parser.byte json.ml parser.ml
