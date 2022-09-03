@@ -183,7 +183,10 @@ let parse1 str strlen =
                                 | 'n' -> Ok (Some '\n', idx + 2)
                                 | 'r' -> Ok (Some '\r', idx + 2)
                                 | 't' -> Ok (Some '\t', idx + 2)
-                                | c -> Error ("Unrecognised escape sequance \\" ^ (sofc c), idx))
+                                | 'u' ->
+                                        let= (_hex, idx) = hexword (idx + 2) in
+                                        Ok (Some (Char.chr 0xbf), idx)  (* we don't support unicode, replace with inverted question mark *)
+                                | c -> Error ("Unrecognised escape sequence \\" ^ (sofc c), idx))
                         | c -> Ok (Some c, idx + 1)
                 in
                 match chr '"' idx with
