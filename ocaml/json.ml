@@ -51,6 +51,13 @@ let is_ws = function
         | '\r' -> true
         | _ -> false
 
+let hexbytes = Bytes.of_string "0123456789abcdef"
+
+let is_hex ch = Bytes.contains hexbytes ch
+
+let parse_hex_unsafe ch =
+        Bytes.index hexbytes ch
+
 let sofc chr =
         String.make 1 chr
 
@@ -108,6 +115,18 @@ let parse1 str strlen =
         let chr ch idx =
                 if idx < strlen && peek idx = ch then Ok (ch, idx + 1)
                 else Error ("Expected " ^ sofc(ch), idx)
+        in
+        let nhex acc idx =
+                if idx < strlen && is_hex (peek idx) then
+                        Ok (16 * acc + parse_hex_unsafe (peek idx), idx + 1)
+                else Error ("Expected hex char", idx)
+        in
+        let hexword idx =
+                let= (a, idx) = nhex 0 idx in
+                let= (b, idx) = nhex a idx in
+                let= (c, idx) = nhex b idx in
+                let= (d, idx) = nhex c idx in
+                Ok (d, idx)
         in
         let parse_null idx =
                 match take is_letter idx with
