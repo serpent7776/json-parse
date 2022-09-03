@@ -101,12 +101,12 @@ let parse1 str strlen =
                 let rec proc acc idx =
                         if idx < strlen then
                                 match f idx with
-                                | Ok (Some c, idx') -> proc (acc ^ (sofc c)) idx'
-                                | Ok (None, idx') -> Ok (acc, idx')
+                                | Ok (Some c, idx') -> proc (c :: acc) idx'
+                                | Ok (None, idx') -> Ok (implode_rev acc, idx')
                                 | Error e -> Error e
-                        else Ok (acc, idx)
+                        else Ok (implode_rev acc, idx)
                 in
-                let= (data, idx') = proc "" idx in
+                let= (data, idx') = proc [] idx in
                 Ok (data, idx')
         in
         let skip f idx =
