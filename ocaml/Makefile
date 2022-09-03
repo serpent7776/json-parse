@@ -19,3 +19,7 @@ utop:
 .PHONY: parser.byte
 parser.byte:
 	ocamlc -o parser.byte json.ml parser.ml
+
+.PHONY: parser-test
+parser-test:
+	./parser-test.sh

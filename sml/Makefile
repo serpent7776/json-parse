@@ -10,3 +10,7 @@ top:
 .PHONY: parser
 parser:
 	mlton -default-type int64 -output ./parser parser.mlb
+
+.PHONY: parser-test
+parser-test:
+	./parser-test.sh
