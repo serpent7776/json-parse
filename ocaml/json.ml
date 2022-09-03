@@ -61,6 +61,12 @@ let parse_hex_unsafe ch =
 let sofc chr =
         String.make 1 chr
 
+let implode_rev ls =
+        let size = List.length ls in
+        let bytes = Bytes.create size in
+        List.iteri (fun idx ch -> Bytes.set bytes (size - idx - 1) ch) ls;
+        Bytes.to_string bytes
+
 (** length s returns length of the string s ignoring any trailing whitespaca *)
 let length str =
         let strlen = String.length str in
