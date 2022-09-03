@@ -4,11 +4,17 @@ let read_whole_file filename =
         close_in ch;
         s
 
-let filename = Sys.argv.(1)
+let print = Sys.argv.(1) = "-p"
+let filename = Sys.argv.(2)
 
 let () =
         let str = read_whole_file filename in
         match Json.parse str with
-        | Error (e,l) -> Printf.printf "%s at byte %i\n" e l
-        | Ok json -> Printf.printf "%a\n" Json.print json
+        | Error (e,l) ->
+                Printf.printf "%s at byte %i\n" e l
+        | Ok json ->
+                        if print then
+                                Printf.printf "%a\n" Json.print json
+                        else
+                                Printf.printf "Ok\n"
 
