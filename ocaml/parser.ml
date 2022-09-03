@@ -11,7 +11,8 @@ let () =
         let str = read_whole_file filename in
         match Json.parse str with
         | Error (e,l) ->
-                Printf.printf "%s at byte %i\n" e l
+                Printf.printf "%s at byte %i\n" e l;
+                exit 1
         | Ok json ->
                         if print then
                                 Printf.printf "%a\n" Json.print json
