@@ -53,10 +53,10 @@ let is_ws = function
 
 let hexbytes = Bytes.of_string "0123456789abcdef"
 
-let is_hex ch = Bytes.contains hexbytes ch
+let is_hex ch = Bytes.contains hexbytes (Char.lowercase_ascii ch)
 
 let parse_hex_unsafe ch =
-        Bytes.index hexbytes ch
+        Bytes.index hexbytes (Char.lowercase_ascii ch)
 
 let sofc chr =
         String.make 1 chr
