@@ -36,6 +36,15 @@ fun op>>! (r, f) =
        Ok ok => Ok ok
      | Error e => f e
 
+val hexdigits = (Vector.fromList o explode) "0123456789abcdef"
+
+fun is_hex ch =
+  let
+    val ch = Char.toLower ch
+  in
+    isSome (Vector.find (fn x => x = ch) hexdigits)
+  end
+
 fun strlen str =
   let
     val len = size str
@@ -92,6 +101,15 @@ fun parse1 str strlen =
     fun chr ch idx =
       if idx < strlen andalso peek idx = ch then Ok (ch, idx + 1)
       else Error ("Expectetd " ^ Char.toString ch, idx)
+    fun hex idx =
+      if idx < strlen andalso is_hex (peek idx) then Ok ((peek idx), idx + 1)
+      else Error ("Expectetd hex digit", idx)
+    fun hexword idx =
+      hex idx >>=
+      (fn (_, idx) => hex idx) >>=
+      (fn (_, idx) => hex idx) >>=
+      (fn (_, idx) => hex idx) >>=
+      (fn (_, idx) => Ok (Char.chr 0xBF, idx))  (* we don't support unicode, just return inverted question mark *)
     fun parse_null idx =
       case take is_alpha idx of
            Ok ("null", idx') => Ok (Null, idx')
@@ -156,6 +174,7 @@ fun parse1 str strlen =
                 | #"n" => Ok (SOME #"\n", idx + 2)
                 | #"r" => Ok (SOME #"\r", idx + 2)
                 | #"t" => Ok (SOME #"\t", idx + 2)
+                | #"u" => hexword (idx + 2) >>= (fn (ch, idx) => Ok (SOME ch, idx))
                 | c => Error ("Invalid backslash sequence \\" ^ (String.str c), idx))
          | #"\"" => Ok (NONE, idx + 1)
          | c => Ok (SOME c, idx + 1)
