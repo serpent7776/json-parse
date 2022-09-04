@@ -1,6 +1,6 @@
 .PHONY: test
 test:
-	ocamlc -o test json.ml test.ml
+	ocamlc -g -o test json.ml test.ml
 	env CAMLRUNPARAM=b ./test
 
 .PHONY: parser
