@@ -53,6 +53,10 @@ let () =
         assert (ok parse {|"a b c"|} (String "a b c"));
         assert (ok parse {|" a b c "|} (String " a b c "));
         assert (ok parse {|"foo\"bar"|} (String {|foo"bar|}));
+        assert (ok parse {|"\u1234"|} (String "\xBF"));
+        assert (ok parse {|"\u1234\uabcd"|} (String "\xBF\xBF"));
+        assert (ok parse {|"\u1234\uabcd\u00Ff"|} (String "\xBF\xBF\xBF"));
+        assert (ok parse {|"foo\u12cdbar"|} (String "foo\xBFbar"));
 
         (* arrays *)
         assert (ok parse "[]" (Array [ ]));
@@ -108,6 +112,7 @@ let () =
         assert (ok parse "   null   " Null);
         assert (ok parse "   true   " (Bool true));
         assert (ok parse "  false  " (Bool false));
+        assert (ok parse {|" \u1234 \uabcd \u00Ff "|} (String " \xBF \xBF \xBF "));
         assert (ok parse " [ true, false, null ] " (Array [ (Bool true); (Bool false); Null ]));
         assert (ok parse " [ true , false , null ] " (Array [ (Bool true); (Bool false); Null ]));
         assert (ok parse {| { "a" : true , "b" : false , "c" : null } |} (Object [ ("a", Bool true); ("b", Bool false); ("c", Null) ] ));
