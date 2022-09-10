@@ -9,6 +9,6 @@ in
          if should_print then print_json json
          else print "Ok\n"
      | Error (e, idx) =>
-         (print e; print " at byte "; (print o Int.toString) idx; print "\n";
+         ((print o describe) e; print " at byte "; (print o Int.toString) idx; print "\n";
          OS.Process.exit OS.Process.failure)
 end;

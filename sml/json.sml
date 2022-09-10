@@ -18,6 +18,33 @@ datatype json =
   | Object of dict
 withtype dict = (string * json) list
 
+datatype error =
+          EmptyString
+        | CharMismatch of char
+        | HexCharExpected
+        | NullExpected
+        | TrueExpected
+        | FalseExpected
+        | ExponentRequired
+        | NumberExpected
+        | UnrecognisedEscapeSequence of char
+        | InvalidValue
+        | OutOfBounds
+        | Garbage
+
+fun describe EmptyString = "Empty string parsed"
+  | describe (CharMismatch c) = "Expected " ^ str(c)
+  | describe HexCharExpected = "Expected hex char"
+  | describe NullExpected = "Expected null"
+  | describe TrueExpected = "Expected true"
+  | describe FalseExpected = "Expected false"
+  | describe ExponentRequired = "Exponent required"
+  | describe NumberExpected = "Number expected"
+  | describe (UnrecognisedEscapeSequence c) = "Unrecognised escape sequence \\" ^ str(c)
+  | describe InvalidValue = "Invalid value"
+  | describe OutOfBounds = "Out of bounds read attempt"
+  | describe Garbage = "garbage found at the end of string"
+
 fun is_ws #" " = true
   | is_ws #"\t" = true
   | is_ws #"\n" = true
@@ -80,7 +107,7 @@ fun parse1 str strlen =
       in
         proc [] idx >>=
           (fn (str, idx') =>
-            if idx' - idx = 0 then Error ("Empty string parsed", idx)
+            if idx' - idx = 0 then Error (EmptyString, idx)
             else Ok (str, idx'))
       end
     fun ask f idx =
@@ -100,10 +127,10 @@ fun parse1 str strlen =
     fun skip_ws idx = skip is_ws idx
     fun chr ch idx =
       if idx < strlen andalso peek idx = ch then Ok (ch, idx + 1)
-      else Error ("Expectetd " ^ Char.toString ch, idx)
+      else Error (CharMismatch ch, idx)
     fun hex idx =
       if idx < strlen andalso is_hex (peek idx) then Ok ((peek idx), idx + 1)
-      else Error ("Expectetd hex digit", idx)
+      else Error (HexCharExpected, idx)
     fun hexword idx =
       hex idx >>=
       (fn (_, idx) => hex idx) >>=
@@ -113,15 +140,15 @@ fun parse1 str strlen =
     fun parse_null idx =
       case take is_alpha idx of
            Ok ("null", idx') => Ok (Null, idx')
-         | _ => Error ("Expected null", idx)
+         | _ => Error (NullExpected, idx)
     fun parse_true idx =
       case take is_alpha idx of
            Ok ("true", idx') => Ok (Bool true, idx')
-         | _ => Error ("Expected true", idx)
+         | _ => Error (TrueExpected, idx)
     fun parse_false idx =
       case take is_alpha idx of
            Ok ("false", idx') => Ok (Bool false, idx')
-         | _ => Error ("Expected false", idx)
+         | _ => Error (FalseExpected, idx)
     fun intify ((num, frac, exp), idx) =
       ((s2i num, s2i frac, size frac, s2i exp), idx)
     fun make_number ((num, frac, prec, exp), idx) =
@@ -141,10 +168,10 @@ fun parse1 str strlen =
         fun parse_exponent ((num, frac), idx) =
             case take is_digit idx of
                  Ok (exp, idx') => Ok ((num, frac, exp), idx')
-               | Error (e, _) => Error ("Expected exponent", idx)
+               | Error (e, _) => Error (ExponentRequired, idx)
       in
         take is_digit idx >>!
-        (fn (_, idx) => Error ("Expected number", idx)) >>=
+        (fn (_, idx) => Error (NumberExpected, idx)) >>=
         (fn (num, idx) =>
           case chr #"." idx of
               Ok (_, idx') => parse_fraction (num, idx')
@@ -175,7 +202,7 @@ fun parse1 str strlen =
                 | #"r" => Ok (SOME #"\r", idx + 2)
                 | #"t" => Ok (SOME #"\t", idx + 2)
                 | #"u" => hexword (idx + 2) >>= (fn (ch, idx) => Ok (SOME ch, idx))
-                | c => Error ("Invalid backslash sequence \\" ^ (String.str c), idx))
+                | c => Error (UnrecognisedEscapeSequence c, idx))
          | #"\"" => Ok (NONE, idx + 1)
          | c => Ok (SOME c, idx + 1)
     fun parse_string_raw idx =
@@ -246,14 +273,14 @@ fun parse1 str strlen =
              | #"\"" => parse_string idx
              | #"[" => parse_array idx
              | #"{" => parse_object idx
-             | _ => Error ("Invalid value", idx)
-        else Error ("Out of bounds read attempt", idx)
+             | _ => Error (InvalidValue, idx)
+        else Error (OutOfBounds, idx)
       end
   in
     parse_value 0 >>=
     (fn (v, idx) =>
       if idx = strlen then Ok (v, idx)
-      else Error ("garbage found at the end of string", idx))
+      else Error (Garbage, idx))
   end
 
 fun parse str =
@@ -261,7 +288,7 @@ fun parse str =
     val strlen = strlen str
   in
     if strlen > 0 then parse1 str strlen
-    else Error ("Empty string", 0)
+    else Error (EmptyString, 0)
   end
 
 fun escape ch =
