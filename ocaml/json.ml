@@ -35,6 +35,43 @@ type json =
         | Object of dict
 and dict = (string * json) list
 
+type error =
+        | EmptyString
+        | CharMismatch of char
+        | HexCharExpected
+        | NullExpected
+        | BoolExpected
+        | ExponentRequired
+        | UnrecognisedEscapeSequence of char
+        | InvalidStringStart
+        | InvalidStringEnd
+        | InvalidArrayElement of error
+        | InvalidObjectElement of error
+        | Fatal
+        | InvalidValue
+        | OutOfBounds
+        | Garbage
+
+let sofc chr =
+        String.make 1 chr
+
+let rec describe = function
+        | EmptyString -> "Empty string parsed"
+        | CharMismatch c -> "Expected " ^ sofc(c)
+        | HexCharExpected -> "Expected hex char"
+        | NullExpected -> "Expected null"
+        | BoolExpected -> "Expected bool"
+        | ExponentRequired -> "Exponent required"
+        | UnrecognisedEscapeSequence c -> "Unrecognised escape sequence \\" ^ sofc(c)
+        | InvalidStringStart -> {|String must start with "|}
+        | InvalidStringEnd -> {|String must end with "|}
+        | InvalidArrayElement e -> "Failed to parse array element: " ^ (describe e)
+        | InvalidObjectElement e -> "Failed to parse object element: " ^ (describe e)
+        | Fatal -> "Should never happen"
+        | InvalidValue -> "Invalid value"
+        | OutOfBounds -> "Out of bounds read attempt"
+        | Garbage -> "garbage found at the end of string"
+
 let is_letter = function
         | 'a'..'z' -> true
         | 'A'..'Z' -> true
@@ -57,9 +94,6 @@ let is_hex ch = Bytes.contains hexbytes (Char.lowercase_ascii ch)
 
 let parse_hex_unsafe ch =
         Bytes.index hexbytes (Char.lowercase_ascii ch)
-
-let sofc chr =
-        String.make 1 chr
 
 let implode_rev ls =
         let size = List.length ls in
@@ -94,7 +128,7 @@ let parse1 str strlen =
                 let last = proc idx in
                 let len = last - idx in
                 match len with
-                | 0 -> Error ("Empty string parsed", idx)
+                | 0 -> Error (EmptyString, idx)
                 | _ -> Ok (String.sub str idx len, last)
         in
         let ask f idx =
@@ -120,12 +154,12 @@ let parse1 str strlen =
         in
         let chr ch idx =
                 if idx < strlen && peek idx = ch then Ok (ch, idx + 1)
-                else Error ("Expected " ^ sofc(ch), idx)
+                else Error (CharMismatch ch, idx)
         in
         let nhex acc idx =
                 if idx < strlen && is_hex (peek idx) then
                         Ok (16 * acc + parse_hex_unsafe (peek idx), idx + 1)
-                else Error ("Expected hex char", idx)
+                else Error (HexCharExpected, idx)
         in
         let hexword idx =
                 let= (a, idx) = nhex 0 idx in
@@ -137,13 +171,13 @@ let parse1 str strlen =
         let parse_null idx =
                 match take is_letter idx with
                 | Ok ("null", idx') -> Ok (Null, idx')
-                | _ -> Error ("Expected null", idx)
+                | _ -> Error (NullExpected, idx)
         in
         let parse_bool idx =
                 match take is_letter idx with
                 | Ok ("true", idx') -> Ok (Bool true, idx')
                 | Ok ("false", idx') -> Ok (Bool false, idx')
-                | _ -> Error ("Expected bool", idx)
+                | _ -> Error (BoolExpected, idx)
         in
         let parse_number idx =
                 (* parse sign *)
@@ -170,7 +204,7 @@ let parse1 str strlen =
                         | Error (_, idx) -> Ok (0, idx)
                         | Ok (_, idx) ->
                                 match take is_digit idx with
-                                | Error (_, idx) -> Error ("Exponent required", idx)
+                                | Error (_, idx) -> Error (ExponentRequired, idx)
                                 | Ok (n, idx) -> Ok (int_of_string n, idx)
                 in
                 Ok (Number (make_number integer fraction precision exponent), idx)
@@ -192,15 +226,15 @@ let parse1 str strlen =
                                 | 'u' ->
                                         let= (_hex, idx) = hexword (idx + 2) in
                                         Ok (Some (Char.chr 0xbf), idx)  (* we don't support unicode, replace with inverted question mark *)
-                                | c -> Error ("Unrecognised escape sequence \\" ^ (sofc c), idx))
+                                | c -> Error (UnrecognisedEscapeSequence c, idx))
                         | c -> Ok (Some c, idx + 1)
                 in
                 match chr '"' idx with
-                | Error (_, idx) -> Error ({|String must start with "|}, idx)
+                | Error (_, idx) -> Error (InvalidStringStart, idx)
                 | Ok (_, idx) ->
                         let= str, idx = ask string_char idx in
                         match chr '"' idx with
-                        | Error (_, idx) -> Error ({|String must end with "|}, idx)
+                        | Error (_, idx) -> Error (InvalidStringEnd, idx)
                         | Ok (_, idx) -> Ok (String str, idx)
         in
         let rec parse_array idx =
@@ -210,7 +244,7 @@ let parse1 str strlen =
                         | Error (_, idx) -> Ok (List.rev acc, idx)
                         | Ok (_, idx) ->
                                 match parse_value idx with
-                                | Error (_, idx) -> Error ("Failed to parse array element", idx)
+                                | Error (e, idx) -> Error (InvalidArrayElement e, idx)
                                 | Ok (value, idx) ->
                                         parse_next_array_item (value :: acc) idx
                 in
@@ -235,10 +269,10 @@ let parse1 str strlen =
                                 let= (_, idx) = chr ':' idx in
                                 let idx = skip_ws idx in
                                 match parse_value idx with
-                                | Error (_, idx) -> Error ("Failed to parse object element", idx)
+                                | Error (e, idx) -> Error (InvalidObjectElement e, idx)
                                 | Ok (value, idx) -> Ok ((key, value), idx)
                         )
-                        | Ok _ -> Error ("Should never happen", idx)
+                        | Ok _ -> Error (Fatal, idx)
                 in
                 let rec parse_next_object_item acc idx =
                         match chr ',' idx with
@@ -279,18 +313,18 @@ let parse1 str strlen =
                         | '"' -> parse_string idx
                         | '[' -> parse_array idx
                         | '{' -> parse_object idx
-                        | _ -> Error ("Invalid value", idx)
-                else Error ("Out of bounds read attempt", idx)
+                        | _ -> Error (InvalidValue, idx)
+                else Error (OutOfBounds, idx)
         in
         let= (result, idx) = parse_value 0 in
         if idx = strlen then Ok result
-        else Error ("garbage found at the end of string", idx)
+        else Error (Garbage, idx)
 
 (** Parse string into json *)
 let parse str =
         let strlen = length str in
         if strlen > 0 then parse1 str strlen
-        else Error ("Empty string", 0)
+        else Error (EmptyString, 0)
 
 let print_bool chan = function
         | false -> output_string chan "false"
