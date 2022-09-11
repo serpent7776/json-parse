@@ -1,15 +1,20 @@
 let parse = Json.parse
 
+let result = ref 0
+
 (* Input string was parsed, but the result was not what was expected *)
 let incorrect_result value expected actual =
+        result := 1;
         Printf.eprintf "Failed for \"%s\":\n\texpected json: %a\n\tactual json:   %a\n" value Json.print expected Json.print actual
 
 (* Input string failed to parse and the returned error was not what was expected *)
 let incorrect_error value expected actual =
+        result := 1;
         Printf.eprintf "Failed for \"%s\":\n\texpected error: %s\n\tactual error:   %s\n" value (Json.describe expected) (Json.describe actual)
 
 (* Input string was parsed, but shouldn't *)
 let incorrect_parse value expected actual =
+        result := 1;
         Printf.eprintf "Failed for \"%s\":\n\texpected error: %s\n\tactual json:  %a\n" value (Json.describe expected) Json.print actual
 
 (* Input string failed to parse, but should have *)
@@ -155,4 +160,5 @@ let () =
         ok parse {| { "a" : true , "b" : false , "c" : null } |} (Object [ ("a", Bool true); ("b", Bool false); ("c", Null) ] );
         ok parse {| {  } |} (Object [ ] );
         ok parse {| [  ] |} (Array [ ] );
-        ()
+
+        exit !result
