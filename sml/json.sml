@@ -88,27 +88,16 @@ fun s2i str = getOpt (Int.fromString str, 0)
 fun parse1 (str, strlen) =
   let
     fun peek idx = String.sub (str, idx)
-    fun is_alpha idx =
-      case Char.isAlpha (peek idx) of
-           true => Ok (SOME (peek idx), idx + 1)
-         | false => Ok (NONE, idx)
-    fun is_digit idx =
-      case Char.isDigit (peek idx) of
-           true => Ok (SOME (peek idx), idx + 1)
-         | false => Ok (NONE, idx)
     fun take (f, idx) =
       let
-        fun proc (acc, last) =
-          if not (last < strlen) then Ok (implode (rev acc), last)
-          else case f last of
-                    Ok (SOME ch, idx) => proc ((ch :: acc), idx)
-                  | Ok (NONE, _) => Ok (implode (rev acc), last)
-                  | Error e => e
+        fun proc last =
+          if last < strlen andalso f (peek last) then proc (last + 1)
+          else last
+        val last = proc idx
+        val count = last - idx
       in
-        proc ([], idx) >>=
-          (fn (str, idx') =>
-            if idx' - idx = 0 then Error (EmptyString, idx)
-            else Ok (str, idx'))
+        if count = 0 then Error (EmptyString, idx)
+        else Ok (String.substring (str, idx, count), last)
       end
     fun ask (f, idx) =
       let
@@ -138,15 +127,15 @@ fun parse1 (str, strlen) =
       (fn (_, idx) => hex idx) >>=
       (fn (_, idx) => Ok (Char.chr 0xBF, idx))  (* we don't support unicode, just return inverted question mark *)
     fun parse_null idx =
-      case take (is_alpha, idx) of
+      case take (Char.isAlpha, idx) of
            Ok ("null", idx') => Ok (Null, idx')
          | _ => Error (NullExpected, idx)
     fun parse_true idx =
-      case take (is_alpha, idx) of
+      case take (Char.isAlpha, idx) of
            Ok ("true", idx') => Ok (Bool true, idx')
          | _ => Error (TrueExpected, idx)
     fun parse_false idx =
-      case take (is_alpha, idx) of
+      case take (Char.isAlpha, idx) of
            Ok ("false", idx') => Ok (Bool false, idx')
          | _ => Error (FalseExpected, idx)
     fun intify ((num, frac, exp), idx) =
@@ -162,15 +151,15 @@ fun parse1 (str, strlen) =
     fun parse_number_parts idx =
       let
         fun parse_fraction (num, idx) =
-          case take (is_digit, idx) of
+          case take (Char.isDigit, idx) of
                Ok (frac, idx') => Ok ((num, frac), idx')
              | _ => Ok ((num, ""), idx)
         fun parse_exponent ((num, frac), idx) =
-            case take (is_digit, idx) of
+            case take (Char.isDigit, idx) of
                  Ok (exp, idx') => Ok ((num, frac, exp), idx')
                | Error (e, _) => Error (ExponentRequired, idx)
       in
-        take (is_digit, idx) >>!
+        take (Char.isDigit, idx) >>!
         (fn (_, idx) => Error (NumberExpected, idx)) >>=
         (fn (num, idx) =>
           case chr (#".", idx) of
