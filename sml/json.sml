@@ -85,7 +85,7 @@ fun strlen str =
 
 fun s2i str = getOpt (Int.fromString str, 0)
 
-fun parse1 str strlen =
+fun parse1 (str, strlen) =
   let
     fun peek idx = String.sub (str, idx)
     fun is_alpha idx =
@@ -96,36 +96,36 @@ fun parse1 str strlen =
       case Char.isDigit (peek idx) of
            true => Ok (SOME (peek idx), idx + 1)
          | false => Ok (NONE, idx)
-    fun take f idx =
+    fun take (f, idx) =
       let
-        fun proc acc last =
+        fun proc (acc, last) =
           if not (last < strlen) then Ok (implode (rev acc), last)
           else case f last of
-                    Ok (SOME ch, idx) => proc (ch :: acc) idx
+                    Ok (SOME ch, idx) => proc ((ch :: acc), idx)
                   | Ok (NONE, _) => Ok (implode (rev acc), last)
                   | Error e => e
       in
-        proc [] idx >>=
+        proc ([], idx) >>=
           (fn (str, idx') =>
             if idx' - idx = 0 then Error (EmptyString, idx)
             else Ok (str, idx'))
       end
-    fun ask f idx =
+    fun ask (f, idx) =
       let
-        fun proc acc last =
+        fun proc (acc, last) =
           if not (last < strlen) then Ok (implode (rev acc), last)
           else case f last of
-                    Ok (SOME ch, idx) => proc (ch :: acc) idx
+                    Ok (SOME ch, idx) => proc ((ch :: acc), idx)
                   | Ok (NONE, _) => Ok (implode (rev acc), last)
                   | Error e => Error e
       in
-        proc [] idx
+        proc ([], idx)
       end
-    fun skip f idx =
-      if idx < strlen andalso f (peek idx) then skip f (idx + 1)
+    fun skip (f, idx) =
+      if idx < strlen andalso f (peek idx) then skip (f, (idx + 1))
       else idx
-    fun skip_ws idx = skip is_ws idx
-    fun chr ch idx =
+    fun skip_ws idx = skip (is_ws, idx)
+    fun chr (ch, idx) =
       if idx < strlen andalso peek idx = ch then Ok (ch, idx + 1)
       else Error (CharMismatch ch, idx)
     fun hex idx =
@@ -138,15 +138,15 @@ fun parse1 str strlen =
       (fn (_, idx) => hex idx) >>=
       (fn (_, idx) => Ok (Char.chr 0xBF, idx))  (* we don't support unicode, just return inverted question mark *)
     fun parse_null idx =
-      case take is_alpha idx of
+      case take (is_alpha, idx) of
            Ok ("null", idx') => Ok (Null, idx')
          | _ => Error (NullExpected, idx)
     fun parse_true idx =
-      case take is_alpha idx of
+      case take (is_alpha, idx) of
            Ok ("true", idx') => Ok (Bool true, idx')
          | _ => Error (TrueExpected, idx)
     fun parse_false idx =
-      case take is_alpha idx of
+      case take (is_alpha, idx) of
            Ok ("false", idx') => Ok (Bool false, idx')
          | _ => Error (FalseExpected, idx)
     fun intify ((num, frac, exp), idx) =
@@ -162,22 +162,22 @@ fun parse1 str strlen =
     fun parse_number_parts idx =
       let
         fun parse_fraction (num, idx) =
-          case take is_digit idx of
+          case take (is_digit, idx) of
                Ok (frac, idx') => Ok ((num, frac), idx')
              | _ => Ok ((num, ""), idx)
         fun parse_exponent ((num, frac), idx) =
-            case take is_digit idx of
+            case take (is_digit, idx) of
                  Ok (exp, idx') => Ok ((num, frac, exp), idx')
                | Error (e, _) => Error (ExponentRequired, idx)
       in
-        take is_digit idx >>!
+        take (is_digit, idx) >>!
         (fn (_, idx) => Error (NumberExpected, idx)) >>=
         (fn (num, idx) =>
-          case chr #"." idx of
+          case chr (#".", idx) of
               Ok (_, idx') => parse_fraction (num, idx')
             | Error _ => Ok ((num, ""), idx)) >>=
         (fn ((num, frac), idx) =>
-          case chr #"e" idx of
+          case chr (#"e", idx) of
               Ok (_, idx') => parse_exponent ((num, frac), idx')
             | Error _ => Ok ((num, frac, ""), idx))
       end
@@ -185,10 +185,9 @@ fun parse1 str strlen =
       parse_number_parts idx >>=
       (make_number o intify)
     fun parse_neg_integer idx =
-      chr #"-" idx >>=
+      chr (#"-", idx) >>=
       (fn (_, idx) => parse_number_parts idx) >>=
       (make_neg_number o intify)
-    fun ending_quote ch prev = ch = #"\"" andalso prev <> #"\\"
     fun string_char idx =
       case (peek idx) of
            #"\\" =>
@@ -206,49 +205,49 @@ fun parse1 str strlen =
          | #"\"" => Ok (NONE, idx + 1)
          | c => Ok (SOME c, idx + 1)
     fun parse_string_raw idx =
-      chr #"\"" idx >>=
-      (fn (_, idx) => ask string_char idx) >>=
-      (fn (sub, idx) => chr #"\"" idx >>=
+      chr (#"\"", idx) >>=
+      (fn (_, idx) => ask (string_char, idx)) >>=
+      (fn (sub, idx) => chr (#"\"", idx) >>=
         (fn (_, idx) => Ok (sub, idx)))
     fun parse_string idx =
       parse_string_raw idx >>=
       (fn (str, idx) => Ok (String str, idx))
-    fun parse_array_rest acc idx =
-      case chr #"," (skip_ws idx) of
+    fun parse_array_rest (acc, idx) =
+      case chr (#",", (skip_ws idx)) of
            Ok (_, idx) =>
              parse_value idx >>=
-             (fn (next, idx) => parse_array_rest (next :: acc) idx)
+             (fn (next, idx) => parse_array_rest ((next :: acc), idx))
          | Error (e, idx) => Ok (acc, idx)
     and parse_array idx =
-      chr #"[" idx >>=
+      chr (#"[", idx) >>=
       (fn (_, idx) =>
         case parse_value idx of
-             Ok (item, idx') => parse_array_rest [item] idx'
+             Ok (item, idx') => parse_array_rest ([item], idx')
            | Error (_, idx') => Ok ([], idx')
       ) >>=
-      (fn (items, idx) => chr #"]" (skip_ws idx) >>=
+      (fn (items, idx) => chr (#"]", (skip_ws idx)) >>=
         (fn (_, idx) => Ok (Array (rev items), idx))
       )
     and parse_object_item idx =
       parse_string_raw idx >>=
-      (fn (key, idx) => chr #":" (skip_ws idx) >>=
+      (fn (key, idx) => chr (#":", (skip_ws idx)) >>=
         (fn (_, idx) =>
           parse_value idx >>=
           (fn (value, idx) => Ok ((key, value), idx))))
-    and parse_object_rest acc idx =
-      case chr #"," (skip_ws idx) of
+    and parse_object_rest (acc, idx) =
+      case chr (#",", (skip_ws idx)) of
            Ok (_, idx) =>
              parse_object_item (skip_ws idx) >>=
-             (fn ((key, value), idx) => parse_object_rest ((key, value) :: acc) idx)
+             (fn ((key, value), idx) => parse_object_rest (((key, value) :: acc), idx))
          | Error (_, idx) => Ok (rev acc, idx)
     and parse_object idx =
-      chr #"{" idx >>=
+      chr (#"{", idx) >>=
       (fn (_, idx) =>
         if peek (skip_ws idx) = #"\"" then parse_object_item (skip_ws idx) >>=
-          (fn ((key, value), idx) => parse_object_rest [(key, value)] idx)
+          (fn ((key, value), idx) => parse_object_rest ([(key, value)], idx))
         else Ok ([], idx)
       ) >>=
-      (fn (items, idx) => chr #"}" (skip_ws idx) >>=
+      (fn (items, idx) => chr (#"}", (skip_ws idx)) >>=
         (fn (_, idx) => Ok (Object items, idx)))
     and parse_value idx =
       let
@@ -287,7 +286,7 @@ fun parse str =
   let
     val strlen = strlen str
   in
-    if strlen > 0 then parse1 str strlen
+    if strlen > 0 then parse1 (str, strlen)
     else Error (EmptyString, 0)
   end
 
