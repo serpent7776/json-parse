@@ -5,7 +5,7 @@ let
   val str = TextIO.inputAll file
 in
   case parse str of
-       Ok (json, idx) =>
+       Ok json =>
          if should_print then print_json json
          else print "Ok\n"
      | Error (e, idx) =>

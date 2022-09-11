@@ -279,7 +279,7 @@ fun parse1 str strlen =
   in
     parse_value 0 >>=
     (fn (v, idx) =>
-      if idx = strlen then Ok (v, idx)
+      if idx = strlen then Ok v
       else Error (Garbage, idx))
   end
 
