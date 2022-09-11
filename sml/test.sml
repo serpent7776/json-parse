@@ -1,5 +1,3 @@
-(* open Json *)
-
 exception Fail of string
 
 fun fail arg = raise Fail arg
@@ -139,9 +137,4 @@ val _ = (
     print "assertion failed for input: ";
     print e;
     print "\n"
-  )
-  | _ => (
-    print "unhandled exception "
-    (* print e; *)
-    (* print "\n" *)
   )
