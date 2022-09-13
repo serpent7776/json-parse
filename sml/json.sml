@@ -178,21 +178,27 @@ fun parse1 (str, strlen) =
       (fn (_, idx) => parse_number_parts idx) >>=
       (make_neg_number o intify)
     fun string_char idx =
-      case (peek idx) of
-           #"\\" =>
-            (case peek (idx + 1) of
-                  #"\"" => Ok (SOME #"\"", idx + 2)
-                | #"\\" => Ok (SOME #"\\", idx + 2)
-                | #"/" => Ok (SOME #"/", idx + 2)
-                | #"b" => Ok (SOME #"\b", idx + 2)
-                | #"f" => Ok (SOME #"\f", idx + 2)
-                | #"n" => Ok (SOME #"\n", idx + 2)
-                | #"r" => Ok (SOME #"\r", idx + 2)
-                | #"t" => Ok (SOME #"\t", idx + 2)
-                | #"u" => hexword (idx + 2) >>= (fn (ch, idx) => Ok (SOME ch, idx))
-                | c => Error (UnrecognisedEscapeSequence c, idx))
-         | #"\"" => Ok (NONE, idx + 1)
-         | c => Ok (SOME c, idx + 1)
+      if idx >= strlen then
+        Error (OutOfBounds, idx)
+      else
+        case (peek idx) of
+             #"\\" =>
+              (if idx + 1 >= strlen then
+                Error (OutOfBounds, idx + 1)
+                else
+                  case peek (idx + 1) of
+                       #"\"" => Ok (SOME #"\"", idx + 2)
+                     | #"\\" => Ok (SOME #"\\", idx + 2)
+                     | #"/" => Ok (SOME #"/", idx + 2)
+                     | #"b" => Ok (SOME #"\b", idx + 2)
+                     | #"f" => Ok (SOME #"\f", idx + 2)
+                     | #"n" => Ok (SOME #"\n", idx + 2)
+                     | #"r" => Ok (SOME #"\r", idx + 2)
+                     | #"t" => Ok (SOME #"\t", idx + 2)
+                     | #"u" => hexword (idx + 2) >>= (fn (ch, idx) => Ok (SOME ch, idx))
+                     | c => Error (UnrecognisedEscapeSequence c, idx))
+           | #"\"" => Ok (NONE, idx + 1)
+           | c => Ok (SOME c, idx + 1)
     fun parse_string_raw idx =
       chr (#"\"", idx) >>=
       (fn (_, idx) => ask (string_char, idx)) >>=

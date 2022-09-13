@@ -120,6 +120,10 @@ let (let=) v f =
 let parse1 str strlen =
         let peek idx = str.[idx]
         in
+        let check idx =
+                if idx < strlen then Ok ()
+                else Error (OutOfBounds, idx)
+        in
         let take f idx =
                 let rec proc last =
                         if last < strlen && f (peek last) then proc (last + 1)
@@ -211,10 +215,12 @@ let parse1 str strlen =
         in
         let parse_string idx =
                 let string_char idx =
+                        let= () = check idx in
                         match peek idx with
                         | '"' -> Ok (None, idx)
                         | '\\' ->
-                                (match peek (idx + 1) with
+                                (let= () = check (idx + 1) in
+                                match peek (idx + 1) with
                                 | '"' -> Ok (Some '"', idx + 2)
                                 | '\\' -> Ok (Some '\\', idx + 2)
                                 | '/' -> Ok (Some '/', idx + 2)

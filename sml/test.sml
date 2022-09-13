@@ -127,6 +127,7 @@ val _ =
   ok parse "\"\\u1234\\uabcd\"" (String "\191\191");
   ok parse "\"\\u1234\\uabcd\\u00Ff\"" (String "\191\191\191");
   ok parse "\"foo\\u12cdbar\"" (String "foo\191bar");
+  fails parse "\"\\" OutOfBounds;
 
   (* arrays *)
   ok parse "[]" (Array []);

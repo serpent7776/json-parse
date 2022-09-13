@@ -99,6 +99,7 @@ let () =
         ok parse {|"\u1234\uabcd"|} (String "\xBF\xBF");
         ok parse {|"\u1234\uabcd\u00Ff"|} (String "\xBF\xBF\xBF");
         ok parse {|"foo\u12cdbar"|} (String "foo\xBFbar");
+        fails parse {|"\|} OutOfBounds;
 
         (* arrays *)
         ok parse "[]" (Array [ ]);
