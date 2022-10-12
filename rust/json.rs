@@ -22,7 +22,7 @@ pub struct Number {
 #[derive(Debug, PartialEq)]
 pub enum Error {
     EmptyString,
-    CharMismatch{expected:u8, actual:u8},
+    CharMismatch { expected: u8, actual: u8 },
     HexCharExpected,
     NullExpected,
     TrueExpected,
@@ -43,8 +43,7 @@ type JsonPart<'a> = Result<(Json, &'a [u8]), (Error, &'a [u8])>;
 type JsonResult = Result<Json, (Error, Idx)>;
 
 fn is_alpha(ch: &u8) -> bool {
-    *ch >= b'a' && *ch <= b'z' ||
-    *ch >= b'A' && *ch <= b'Z'
+    *ch >= b'a' && *ch <= b'z' || *ch >= b'A' && *ch <= b'Z'
 }
 
 fn is_digit(ch: &u8) -> bool {
@@ -52,22 +51,17 @@ fn is_digit(ch: &u8) -> bool {
 }
 
 fn is_hex(ch: &u8) -> bool {
-    *ch >= b'0' && *ch <= b'9' ||
-    *ch >= b'a' && *ch <= b'f' ||
-    *ch >= b'A' && *ch <= b'F'
+    *ch >= b'0' && *ch <= b'9' || *ch >= b'a' && *ch <= b'f' || *ch >= b'A' && *ch <= b'F'
 }
 
 fn is_ws(c: &u8) -> bool {
-    *c == b' ' ||
-    *c == b'\t' ||
-    *c == b'\n' ||
-    *c == b'\r'
+    *c == b' ' || *c == b'\t' || *c == b'\n' || *c == b'\r'
 }
 
 fn take(s: &[u8], f: impl Fn(&u8) -> bool) -> Result<(&[u8], &[u8]), (Error, &[u8])> {
     let mut i = 0;
     while i < s.len() && f(&s[i]) {
-        i+=1;
+        i += 1;
     }
     if i > 0 {
         Ok((&s[0..i], &s[i..]))
@@ -76,7 +70,10 @@ fn take(s: &[u8], f: impl Fn(&u8) -> bool) -> Result<(&[u8], &[u8]), (Error, &[u
     }
 }
 
-fn ask(s: &[u8], f: impl Fn(&[u8]) -> Result<(Option<u8>, &[u8]), (Error, &[u8])>) -> Result<(String, &[u8]), (Error, &[u8])> {
+fn ask(
+    s: &[u8],
+    f: impl Fn(&[u8]) -> Result<(Option<u8>, &[u8]), (Error, &[u8])>,
+) -> Result<(String, &[u8]), (Error, &[u8])> {
     let mut data = String::new();
     let mut cont = s;
     loop {
@@ -86,7 +83,9 @@ fn ask(s: &[u8], f: impl Fn(&[u8]) -> Result<(Option<u8>, &[u8]), (Error, &[u8])
         if let (Some(c), s) = f(cont)? {
             data.push(char::from(c));
             cont = s;
-        } else {break;}
+        } else {
+            break;
+        }
     }
     Ok((data, cont))
 }
@@ -94,8 +93,11 @@ fn ask(s: &[u8], f: impl Fn(&[u8]) -> Result<(Option<u8>, &[u8]), (Error, &[u8])
 fn skip(s: &[u8], f: impl Fn(&u8) -> bool) -> &[u8] {
     let mut s = s;
     while let Some(c) = s.first() {
-        if f(c) {s = &s[1..]}
-        else {break;}
+        if f(c) {
+            s = &s[1..]
+        } else {
+            break;
+        }
     }
     s
 }
@@ -106,9 +108,19 @@ fn skip_ws(s: &[u8]) -> &[u8] {
 
 fn chr(s: &[u8], ch: u8) -> Result<(u8, &[u8]), (Error, &[u8])> {
     match s.first() {
-        Some(c) =>
-            if *c == ch {Ok((ch, &s[1..]))}
-            else {Err((Error::CharMismatch{expected:ch, actual:*c}, s))},
+        Some(c) => {
+            if *c == ch {
+                Ok((ch, &s[1..]))
+            } else {
+                Err((
+                    Error::CharMismatch {
+                        expected: ch,
+                        actual: *c,
+                    },
+                    s,
+                ))
+            }
+        }
         None => Err((Error::OutOfBounds, s)),
     }
 }
@@ -137,7 +149,7 @@ fn parse_false(s: &[u8]) -> JsonPart {
 fn parse_fraction(s: &[u8]) -> Result<(i64, usize, &[u8]), (Error, &[u8])> {
     match take(s, is_digit) {
         Ok((fractions, s)) => Ok((to_i64(fractions), fractions.len(), s)),
-        _ => Ok((0, 0, s))
+        _ => Ok((0, 0, s)),
     }
 }
 
@@ -168,7 +180,12 @@ fn parse_number_parts(s: &[u8]) -> Result<(i64, i64, usize, i64, &[u8]), (Error,
 
 fn parse_number(s: &[u8]) -> JsonPart {
     let (ints, fractions, precision, exponent, s) = parse_number_parts(s)?;
-    let number = Number{integer: ints, fraction: fractions, precision: precision, exponent: exponent};
+    let number = Number {
+        integer: ints,
+        fraction: fractions,
+        precision: precision,
+        exponent: exponent,
+    };
     let json = Json::Number(number);
     Ok((json, s))
 }
@@ -176,7 +193,12 @@ fn parse_number(s: &[u8]) -> JsonPart {
 fn parse_negative_number(s: &[u8]) -> JsonPart {
     let (_, s) = chr(s, b'-')?;
     let (ints, fractions, precision, exponent, s) = parse_number_parts(s)?;
-    let number = Number{integer: -ints, fraction: fractions, precision: precision, exponent: exponent};
+    let number = Number {
+        integer: -ints,
+        fraction: fractions,
+        precision: precision,
+        exponent: exponent,
+    };
     let json = Json::Number(number);
     Ok((json, s))
 }
@@ -184,12 +206,13 @@ fn parse_negative_number(s: &[u8]) -> JsonPart {
 fn hex(s: &[u8]) -> Result<(u8, &[u8]), (Error, &[u8])> {
     match s.first() {
         None => Err((Error::OutOfBounds, s)),
-        Some(c) =>
+        Some(c) => {
             if is_hex(c) {
                 Ok((*c, &s[1..]))
             } else {
                 Err((Error::HexCharExpected, s))
-            },
+            }
+        }
     }
 }
 
@@ -219,11 +242,11 @@ fn string_char(s: &[u8]) -> Result<(Option<u8>, &[u8]), (Error, &[u8])> {
                 Some(b'u') => {
                     let (c, s) = hexword(&s[2..])?;
                     Ok((Some(c), s))
-                },
+                }
                 _ => Err((Error::UnrecognisedEscapeSequence(s[1]), s)),
             }
-        },
-        Some(c) => Ok((Some(*c), &s[1..]))
+        }
+        Some(c) => Ok((Some(*c), &s[1..])),
     }
 }
 
@@ -252,11 +275,10 @@ fn parse_array_items(s: &[u8], value: Json) -> Result<(Vec<Json>, &[u8]), (Error
 
 fn parse_array(s: &[u8]) -> JsonPart {
     let (_, s) = chr(s, b'[')?;
-    let (items, s) =
-        match parse_value(s) {
-            Err((_, s)) => Ok((vec![], s)),
-            Ok((value, s)) => parse_array_items(s, value),
-        }?;
+    let (items, s) = match parse_value(s) {
+        Err((_, s)) => Ok((vec![], s)),
+        Ok((value, s)) => parse_array_items(s, value),
+    }?;
     let s = skip_ws(s);
     let (_, s) = chr(s, b']')?;
     Ok((Json::Array(items), s))
@@ -286,13 +308,12 @@ fn parse_object_items(s: &[u8], key: String, value: Json) -> Result<(Dict, &[u8]
 fn parse_object(s: &[u8]) -> JsonPart {
     let (_, s) = chr(s, b'{')?;
     let s = skip_ws(s);
-    let (pairs, s) =
-        if let Some(b'"') = s.first() {
-            let (key, value, s) = parse_key_value_pair(s)?;
-            parse_object_items(s, key, value)?
-        } else {
-            (Dict::new(), s)
-        };
+    let (pairs, s) = if let Some(b'"') = s.first() {
+        let (key, value, s) = parse_key_value_pair(s)?;
+        parse_object_items(s, key, value)?
+    } else {
+        (Dict::new(), s)
+    };
     let s = skip_ws(s);
     let (_, s) = chr(s, b'}')?;
     Ok((Json::Object(pairs), s))
@@ -321,11 +342,14 @@ pub fn parse(s: String) -> JsonResult {
         return Err((Error::EmptyString, 0));
     }
     match parse_value(s) {
-        Ok ((json, s)) => {
+        Ok((json, s)) => {
             let s = skip_ws(s);
-            if s.is_empty() {Ok(json)}
-            else {Err((Error::Garbage, (len - s.len())))}
-        },
+            if s.is_empty() {
+                Ok(json)
+            } else {
+                Err((Error::Garbage, (len - s.len())))
+            }
+        }
         Err((error, s)) => Err((error, (len - s.len()))),
     }
 }
@@ -337,16 +361,36 @@ mod tests {
     fn fails<F: FnOnce(String) -> JsonResult>(f: F, arg: &str, expected_err: Error) {
         let actual = f(String::from(arg));
         match actual {
-            Err((actual_err, _)) => assert!(expected_err == actual_err, "\n\tFailed for {}: Expected to fail with {:?}, but failed with {:?} instead", arg, expected_err, actual_err),
-            Ok(actual_json) => assert!(false, "\n\tFailed for {}: Expected to fail with {:?}, but got {:?}", arg, expected_err, actual_json),
+            Err((actual_err, _)) => assert!(
+                expected_err == actual_err,
+                "\n\tFailed for {}: Expected to fail with {:?}, but failed with {:?} instead",
+                arg,
+                expected_err,
+                actual_err
+            ),
+            Ok(actual_json) => assert!(
+                false,
+                "\n\tFailed for {}: Expected to fail with {:?}, but got {:?}",
+                arg, expected_err, actual_json
+            ),
         }
     }
 
     fn ok<F: FnOnce(String) -> JsonResult>(f: F, arg: &str, expected_json: Json) {
         let actual = f(String::from(arg));
         match actual {
-            Ok(actual_json) => assert!(expected_json == actual_json, "\n\tFailed for {}: Expected to return {:?}, but returned {:?} instead", arg, expected_json, actual_json),
-            Err((actual_err, _)) => assert!(false, "\n\tFailed for {}: Expected to succeed as {:?}, but failed with {:?}", arg, expected_json, actual_err),
+            Ok(actual_json) => assert!(
+                expected_json == actual_json,
+                "\n\tFailed for {}: Expected to return {:?}, but returned {:?} instead",
+                arg,
+                expected_json,
+                actual_json
+            ),
+            Err((actual_err, _)) => assert!(
+                false,
+                "\n\tFailed for {}: Expected to succeed as {:?}, but failed with {:?}",
+                arg, expected_json, actual_err
+            ),
         }
     }
 
@@ -356,7 +400,7 @@ mod tests {
             fn $name() {
                 fails($f, $str, $err);
             }
-        }
+        };
     }
 
     macro_rules! ok {
@@ -365,7 +409,7 @@ mod tests {
             fn $name() {
                 ok($f, $str, $err);
             }
-        }
+        };
     }
 
     fails!(parse, "", Error::EmptyString, empty_string_fails_to_parse);
@@ -480,7 +524,7 @@ mod tests {
 }
 
 fn escape(s: &String) -> String {
-    let esc = |c: char| {match c {
+    let esc = |c: char| match c {
         '\"' => ("\\\"").chars().collect(),
         '\\' => ("\\\\").chars().collect(),
         '\r' => ("\\r").chars().collect(),
@@ -489,7 +533,7 @@ fn escape(s: &String) -> String {
         '\u{0008}' => ("\\b").chars().collect(),
         '\u{000C}' => ("\\f").chars().collect(),
         c => vec![c],
-    }};
+    };
     s.chars().flat_map(esc).collect()
 }
 
