@@ -315,6 +315,7 @@ fn parse_value(s: &[u8]) -> JsonPart {
 }
 
 pub fn parse(s: String) -> JsonResult {
+    let len = s.as_bytes().len();
     let s = skip_ws(s.as_bytes());
     if s.is_empty() {
         return Err((Error::EmptyString, 0));
@@ -323,9 +324,9 @@ pub fn parse(s: String) -> JsonResult {
         Ok ((json, s)) => {
             let s = skip_ws(s);
             if s.is_empty() {Ok(json)}
-            else {Err((Error::Garbage, 0))}
+            else {Err((Error::Garbage, (len - s.len())))}
         },
-        Err((error, _)) => Err((error, 0)),
+        Err((error, s)) => Err((error, (len - s.len()))),
     }
 }
 
