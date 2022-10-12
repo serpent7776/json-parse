@@ -5,7 +5,7 @@ test:
 
 .PHONY: parser
 parser: test
-	rustc -o parser parser.rs
+	rustc -O -o parser parser.rs
 
 
 .PHONY: parser-test
