@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum Json {
@@ -475,4 +476,69 @@ mod tests {
     ok!(parse, r#" {  } "#, Json::Object(Dict::new()) , empty_object_with_spaces_parses_ok);
     ok!(parse, r#" [  ] "#, Json::Array(Vec::new()) , empty_array_with_spaces_parses_ok);
 
+}
+
+fn escape(s: &String) -> String {
+    let esc = |c: char| {match c {
+        '\"' => ("\\\"").chars().collect(),
+        '\\' => ("\\\\").chars().collect(),
+        '\r' => ("\\r").chars().collect(),
+        '\n' => ("\\n").chars().collect(),
+        '\t' => ("\\t").chars().collect(),
+        '\u{0008}' => ("\\b").chars().collect(),
+        '\u{000C}' => ("\\f").chars().collect(),
+        c => vec![c],
+    }};
+    s.chars().flat_map(esc).collect()
+}
+
+impl fmt::Display for Json {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Json::Null => write!(fmt, "null"),
+            Json::Bool(b) => write!(fmt, "{}", b),
+            Json::Number(num) => write!(fmt, "{}", num),
+            Json::String(s) => write!(fmt, "\"{}\"", escape(s)),
+            Json::Array(arr) => print_json_array(arr, fmt),
+            Json::Object(dict) => print_json_object(dict, fmt),
+        }
+    }
+}
+
+impl fmt::Display for Number {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let r = write!(fmt, "{}", self.integer);
+        if self.precision > 0 {
+            write!(fmt, ".{}", self.fraction)?;
+        }
+        if self.exponent != 0 {
+            write!(fmt, "e{}", self.exponent)?;
+        }
+        r
+    }
+}
+
+fn print_json_array(arr: &Vec<Json>, fmt: &mut fmt::Formatter) -> fmt::Result {
+    write!(fmt, "[")?;
+    if arr.len() > 0 {
+        write!(fmt, "{}", arr[0])?;
+        if arr.len() > 1 {
+            for item in arr.iter() {
+                write!(fmt, ", {}", item)?;
+            }
+        }
+    }
+    write!(fmt, "]")
+}
+
+fn print_json_object(obj: &Dict, fmt: &mut fmt::Formatter) -> fmt::Result {
+    write!(fmt, "{{")?;
+    let mut iter = obj.iter();
+    if let Some((key, value)) = iter.next() {
+        write!(fmt, "\"{}\": {}\n", escape(key), value)?;
+        for (key, value) in iter {
+            write!(fmt, ", \"{}\": {}\n", escape(key), value)?;
+        }
+    }
+    write!(fmt, "}}")
 }
