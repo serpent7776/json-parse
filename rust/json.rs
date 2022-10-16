@@ -226,7 +226,7 @@ fn hexword(s: &[u8]) -> Result<(u8, &[u8]), (Error, &[u8])> {
     let (_, s) = hex(s)?;
     let (_, s) = hex(s)?;
     let (_, s) = hex(s)?;
-    Ok((0xBF, s)) // We don't support unicode, just return inverted question mark
+    Ok((b'?', s)) // We don't support unicode, just return question mark
 }
 
 fn string_char(s: &[u8]) -> Result<(Option<u8>, &[u8]), (Error, &[u8])> {
@@ -458,10 +458,10 @@ mod tests {
     ok!(parse, r#""a b c""#, Json::String(String::from("a b c")), string_with_inner_spaces_parses_ok);
     ok!(parse, r#"" a b c ""#, Json::String(String::from(" a b c ")), string_with_leading_trailing_spaces_parses_ok);
     ok!(parse, r#""foo\"bar""#, Json::String(String::from(r#"foo"bar"#)), string_with_escaped_quote_parses_ok);
-    ok!(parse, r#""\u1234""#, Json::String(String::from("\u{00BF}")), unicode_symbol_parses_ok);
-    ok!(parse, r#""\u1234\uabcd""#, Json::String(String::from("\u{00BF}\u{00BF}")), string_with_two_unicode_symbols_parses_ok);
-    ok!(parse, r#""\u1234\uabcd\u00Ff""#, Json::String(String::from("\u{00BF}\u{00BF}\u{00BF}")), string_with_three_unicode_symbols_parses_ok);
-    ok!(parse, r#""foo\u12cdbar""#, Json::String(String::from("foo\u{00BF}bar")), string_with_inner_unicode_symbol_parses_ok);
+    ok!(parse, r#""\u1234""#, Json::String(String::from("?")), unicode_symbol_parses_ok);
+    ok!(parse, r#""\u1234\uabcd""#, Json::String(String::from("??")), string_with_two_unicode_symbols_parses_ok);
+    ok!(parse, r#""\u1234\uabcd\u00Ff""#, Json::String(String::from("???")), string_with_three_unicode_symbols_parses_ok);
+    ok!(parse, r#""foo\u12cdbar""#, Json::String(String::from("foo?bar")), string_with_inner_unicode_symbol_parses_ok);
     fails!(parse, r#""\u12cx""#, Error::HexCharExpected, invalid_unicode_sequence);
     fails!(parse, r#""\"#, Error::OutOfBounds, missing_ending_quote_with_escaped_quote);
 
@@ -519,7 +519,7 @@ mod tests {
     ok!(parse, "   null   ", Json::Null, null_with_spaces_parses_ok);
     ok!(parse, "   true   ", Json::Bool(true), true_with_spaces_parses_ok);
     ok!(parse, "  false  ", Json::Bool(false), false_with_spaces_parses_ok);
-    ok!(parse, r#"" \u1234 \uabcd \u00Ff ""#, Json::String(String::from(" \u{00BF} \u{00BF} \u{00BF} ")), string_with_unicodes_with_spaces_parses_ok);
+    ok!(parse, r#"" \u1234 \uabcd \u00Ff ""#, Json::String(String::from(" ? ? ? ")), string_with_unicodes_with_spaces_parses_ok);
     ok!(parse, " [ true, false, null ] ", Json::Array(vec![ Json::Bool(true), Json::Bool(false), Json::Null ]), array_with_spaces_parses_ok);
     ok!(parse, " [ true , false , null ] ", Json::Array(vec![ Json::Bool(true), Json::Bool(false), Json::Null ]), array_with_more_spaces_parses_ok);
     ok!(parse, r#" { "a" : true , "b" : false , "c" : null } "#, Json::Object(Dict::from([ (String::from("a"), Json::Bool(true)), (String::from("b"), Json::Bool(false)), (String::from("c"), Json::Null) ])), object_with_spaces_parses_ok);

@@ -123,10 +123,10 @@ val _ =
   ok parse "\"a b c\"" (String "a b c");
   ok parse "\" a b c \"" (String " a b c ");
   ok parse "\"foo\\\"bar\"" (String "foo\"bar");
-  ok parse "\"\\u1234\"" (String "\191");
-  ok parse "\"\\u1234\\uabcd\"" (String "\191\191");
-  ok parse "\"\\u1234\\uabcd\\u00Ff\"" (String "\191\191\191");
-  ok parse "\"foo\\u12cdbar\"" (String "foo\191bar");
+  ok parse "\"\\u1234\"" (String "?");
+  ok parse "\"\\u1234\\uabcd\"" (String "??");
+  ok parse "\"\\u1234\\uabcd\\u00Ff\"" (String "???");
+  ok parse "\"foo\\u12cdbar\"" (String "foo?bar");
   fails parse "\"\\" OutOfBounds;
 
   (* arrays *)
@@ -183,7 +183,7 @@ val _ =
   ok parse "   null   " Null;
   ok parse "   true   " (Bool true);
   ok parse "  false  " (Bool false);
-  ok parse "\" \\u1234 \\uabcd \\u00Ff \"" (String " \191 \191 \191 ");
+  ok parse "\" \\u1234 \\uabcd \\u00Ff \"" (String " ? ? ? ");
   ok parse " [ true, false, null ] " (Array [Bool true, Bool false, Null]);
   ok parse " [ true , false , null ] " (Array [Bool true, Bool false, Null]);
   ok parse " { \"a\" : true , \"b\" : false , \"c\" : null } " (Object [("a", Bool true), ("b", Bool false), ("c", Null)]);

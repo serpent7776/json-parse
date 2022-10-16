@@ -125,7 +125,7 @@ fun parse1 (str, strlen) =
       (fn (_, idx) => hex idx) >>=
       (fn (_, idx) => hex idx) >>=
       (fn (_, idx) => hex idx) >>=
-      (fn (_, idx) => Ok (Char.chr 0xBF, idx))  (* we don't support unicode, just return inverted question mark *)
+      (fn (_, idx) => Ok (#"?", idx))  (* we don't support unicode, just return question mark *)
     fun parse_null idx =
       case take (Char.isAlpha, idx) of
            Ok ("null", idx') => Ok (Null, idx')

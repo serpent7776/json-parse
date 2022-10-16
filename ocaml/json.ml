@@ -231,7 +231,7 @@ let parse1 str strlen =
                                 | 't' -> Ok (Some '\t', idx + 2)
                                 | 'u' ->
                                         let= (_hex, idx) = hexword (idx + 2) in
-                                        Ok (Some (Char.chr 0xbf), idx)  (* we don't support unicode, replace with inverted question mark *)
+                                        Ok (Some ('?'), idx)  (* we don't support unicode, replace with question mark *)
                                 | c -> Error (UnrecognisedEscapeSequence c, idx))
                         | c -> Ok (Some c, idx + 1)
                 in

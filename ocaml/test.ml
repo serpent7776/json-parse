@@ -95,10 +95,11 @@ let () =
         ok parse {|"a b c"|} (String "a b c");
         ok parse {|" a b c "|} (String " a b c ");
         ok parse {|"foo\"bar"|} (String {|foo"bar|});
-        ok parse {|"\u1234"|} (String "\xBF");
-        ok parse {|"\u1234\uabcd"|} (String "\xBF\xBF");
-        ok parse {|"\u1234\uabcd\u00Ff"|} (String "\xBF\xBF\xBF");
-        ok parse {|"foo\u12cdbar"|} (String "foo\xBFbar");
+        ok parse {|"\u1234"|} (String "?");
+        ok parse {|"\u1234\uabcd"|} (String "??");
+        ok parse {|"\u1234\uabcd\u00Ff"|} (String "???");
+        ok parse {|"foo\u12cdbar"|} (String "foo?bar");
+        fails parse {|"\u12cx"|} (HexCharExpected);
         fails parse {|"\|} OutOfBounds;
 
         (* arrays *)
@@ -155,7 +156,7 @@ let () =
         ok parse "   null   " Null;
         ok parse "   true   " (Bool true);
         ok parse "  false  " (Bool false);
-        ok parse {|" \u1234 \uabcd \u00Ff "|} (String " \xBF \xBF \xBF ");
+        ok parse {|" \u1234 \uabcd \u00Ff "|} (String " ? ? ? ");
         ok parse " [ true, false, null ] " (Array [ (Bool true); (Bool false); Null ]);
         ok parse " [ true , false , null ] " (Array [ (Bool true); (Bool false); Null ]);
         ok parse {| { "a" : true , "b" : false , "c" : null } |} (Object [ ("a", Bool true); ("b", Bool false); ("c", Null) ] );
