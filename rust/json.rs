@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::string::FromUtf8Error;
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
@@ -24,6 +25,7 @@ pub enum Error {
     EmptyString,
     CharMismatch { expected: u8, actual: u8 },
     HexCharExpected,
+    UtfDecodingError(FromUtf8Error),
     NullExpected,
     TrueExpected,
     FalseExpected,
@@ -74,20 +76,23 @@ fn ask(
     s: &[u8],
     f: impl Fn(&[u8]) -> Result<(Option<u8>, &[u8]), (Error, &[u8])>,
 ) -> Result<(String, &[u8]), (Error, &[u8])> {
-    let mut data = String::new();
+    let mut data = Vec::<u8>::new();
     let mut cont = s;
     loop {
         if cont.is_empty() {
             break;
         }
         if let (Some(c), s) = f(cont)? {
-            data.push(char::from(c));
+            data.push(c);
             cont = s;
         } else {
             break;
         }
     }
-    Ok((data, cont))
+    match String::from_utf8(data) {
+        Ok(string) => Ok((string, cont)),
+        Err(error) => Err((Error::UtfDecodingError(error), cont)),
+    }
 }
 
 fn skip(s: &[u8], f: impl Fn(&u8) -> bool) -> &[u8] {
