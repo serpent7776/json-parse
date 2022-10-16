@@ -347,8 +347,21 @@ let print_number chan n =
         in
         Printf.fprintf chan "%i%a%a" n.integer print_fraction n.fraction print_exponent n.exponent
 
+let escape = function
+        | '"' -> "\\\""
+        | '\\' -> "\\\\"
+        | '\r' -> "\\r"
+        | '\n' -> "\\n"
+        | '\t' -> "\\t"
+        | '\b' -> "\\b"
+        | '\014' -> "\\f"
+        | ch -> sofc ch
+
+let transliterate chan str =
+        String.iter (fun ch -> output_string chan (escape ch)) str
+
 let rec print_string chan s =
-        Printf.fprintf chan {|"%s"|} s
+        Printf.fprintf chan {|"%a"|} transliterate s
 and print_array chan a =
         let rec print_array_items chan = function
                 | [] -> ()

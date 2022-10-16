@@ -287,6 +287,12 @@ fun parse str =
 
 fun escape ch =
   if ch = #"\"" then "\\\""
+  else if ch = #"\\" then "\\\\"
+  else if ch = #"\r" then "\\r"
+  else if ch = #"\n" then "\\n"
+  else if ch = #"\t" then "\\t"
+  else if ch = #"\b" then "\\b"
+  else if ch = #"\f" then "\\f"
   else str ch
 
 fun print_number {integer, fraction, precision, exponent} =
