@@ -1,0 +1,23 @@
+mod json;
+
+use crate::json::{parse};
+
+use std::env;
+use std::fs;
+
+pub fn main() {
+    let args = env::args().collect::<Vec<String>>();
+    let print = args[1].as_str() == "-p";
+    let input_file = args[2].clone();
+    let json_str = fs::read_to_string(input_file).unwrap();
+    match parse(json_str) {
+        Ok(json) => {
+            if print {
+                println!("{}", json)
+            } else {
+                println!("OK")
+            }
+        },
+        Err((error, idx)) => println!("{} at {}", error, idx),
+    }
+}
