@@ -73,25 +73,25 @@ type JsonPart<'a> = Result<(Json, &'a [u8]), (Error, &'a [u8])>;
 
 type JsonResult = Result<Json, (Error, Idx)>;
 
-fn is_alpha(ch: &u8) -> bool {
-    *ch >= b'a' && *ch <= b'z' || *ch >= b'A' && *ch <= b'Z'
+fn is_alpha(ch: u8) -> bool {
+    ch >= b'a' && ch <= b'z' || ch >= b'A' && ch <= b'Z'
 }
 
-fn is_digit(ch: &u8) -> bool {
-    *ch >= b'0' && *ch <= b'9'
+fn is_digit(ch: u8) -> bool {
+    ch >= b'0' && ch <= b'9'
 }
 
-fn is_hex(ch: &u8) -> bool {
-    *ch >= b'0' && *ch <= b'9' || *ch >= b'a' && *ch <= b'f' || *ch >= b'A' && *ch <= b'F'
+fn is_hex(ch: u8) -> bool {
+    ch >= b'0' && ch <= b'9' || ch >= b'a' && ch <= b'f' || ch >= b'A' && ch <= b'F'
 }
 
-fn is_ws(c: &u8) -> bool {
-    *c == b' ' || *c == b'\t' || *c == b'\n' || *c == b'\r'
+fn is_ws(c: u8) -> bool {
+    c == b' ' || c == b'\t' || c == b'\n' || c == b'\r'
 }
 
-fn take(s: &[u8], f: impl Fn(&u8) -> bool) -> Result<(&[u8], &[u8]), (Error, &[u8])> {
+fn take(s: &[u8], f: impl Fn(u8) -> bool) -> Result<(&[u8], &[u8]), (Error, &[u8])> {
     let mut i = 0;
-    while i < s.len() && f(&s[i]) {
+    while i < s.len() && f(s[i]) {
         i += 1;
     }
     if i > 0 {
@@ -124,10 +124,10 @@ fn ask(
     }
 }
 
-fn skip(s: &[u8], f: impl Fn(&u8) -> bool) -> &[u8] {
+fn skip(s: &[u8], f: impl Fn(u8) -> bool) -> &[u8] {
     let mut s = s;
     while let Some(c) = s.first() {
-        if f(c) {
+        if f(*c) {
             s = &s[1..]
         } else {
             break;
@@ -239,7 +239,7 @@ fn hex(s: &[u8]) -> Result<(u8, &[u8]), (Error, &[u8])> {
     match s.first() {
         None => Err((Error::OutOfBounds, s)),
         Some(c) => {
-            if is_hex(c) {
+            if is_hex(*c) {
                 Ok((*c, &s[1..]))
             } else {
                 Err((Error::HexCharExpected, s))
