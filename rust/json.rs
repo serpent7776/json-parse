@@ -74,15 +74,15 @@ type JsonPart<'a> = Result<(Json, &'a [u8]), (Error, &'a [u8])>;
 type JsonResult = Result<Json, (Error, Idx)>;
 
 fn is_alpha(ch: u8) -> bool {
-    ch >= b'a' && ch <= b'z' || ch >= b'A' && ch <= b'Z'
+    (b'a'..=b'z').contains(&ch) || (b'A'..=b'Z').contains(&ch)
 }
 
 fn is_digit(ch: u8) -> bool {
-    ch >= b'0' && ch <= b'9'
+    (b'0'..=b'9').contains(&ch)
 }
 
 fn is_hex(ch: u8) -> bool {
-    ch >= b'0' && ch <= b'9' || ch >= b'a' && ch <= b'f' || ch >= b'A' && ch <= b'F'
+    (b'0'..=b'9').contains(&ch) || (b'a'..=b'f').contains(&ch) || (b'A'..=b'F').contains(&ch)
 }
 
 fn is_ws(c: u8) -> bool {
