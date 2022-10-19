@@ -135,9 +135,9 @@ fn ask(
 
 fn skip(s: &[u8], f: impl Fn(u8) -> bool) -> &[u8] {
     let mut s = s;
-    while let Some(c) = s.first() {
+    while let Some((c, cont)) = s.split_first() {
         if f(*c) {
-            s = &s[1..]
+            s = cont
         } else {
             break;
         }
@@ -150,10 +150,10 @@ fn skip_ws(s: &[u8]) -> &[u8] {
 }
 
 fn chr(s: &[u8], ch: u8) -> Result<(u8, &[u8]), (Error, &[u8])> {
-    match s.first() {
-        Some(c) => {
+    match s.split_first() {
+        Some((c, cont)) => {
             if *c == ch {
-                Ok((ch, &s[1..]))
+                Ok((ch, cont))
             } else {
                 Err((
                     Error::CharMismatch {
@@ -245,11 +245,11 @@ fn parse_negative_number(s: &[u8]) -> JsonPart {
 }
 
 fn hex(s: &[u8]) -> Result<(u8, &[u8]), (Error, &[u8])> {
-    match s.first() {
+    match s.split_first() {
         None => Err((Error::OutOfBounds, s)),
-        Some(c) => {
+        Some((c, cont)) => {
             if is_hex(*c) {
-                Ok((*c, &s[1..]))
+                Ok((*c, cont))
             } else {
                 Err((Error::HexCharExpected, s))
             }
@@ -266,28 +266,28 @@ fn hexword(s: &[u8]) -> Result<(u8, &[u8]), (Error, &[u8])> {
 }
 
 fn string_char(s: &[u8]) -> Result<(Option<u8>, &[u8]), (Error, &[u8])> {
-    match s.first() {
+    match s.split_first() {
         None => Err((Error::OutOfBounds, s)),
-        Some(b'"') => Ok((None, &s)),
-        Some(b'\\') => {
-            match s[1..].first() {
+        Some((b'"', _)) => Ok((None, &s)),
+        Some((b'\\', s)) => {
+            match s.split_first() {
                 None => Err((Error::OutOfBounds, s)),
-                Some(b'"') => Ok((Some(b'"'), &s[2..])),
-                Some(b'\\') => Ok((Some(b'\\'), &s[2..])),
-                Some(b'/') => Ok((Some(b'/'), &s[2..])),
-                Some(b'b') => Ok((Some(0x08), &s[2..])), // rust doesn't support \b
-                Some(b'f') => Ok((Some(0x0C), &s[2..])), // rust doesn't support \f
-                Some(b'n') => Ok((Some(b'\n'), &s[2..])),
-                Some(b'r') => Ok((Some(b'\r'), &s[2..])),
-                Some(b't') => Ok((Some(b'\t'), &s[2..])),
-                Some(b'u') => {
-                    let (c, s) = hexword(&s[2..])?;
+                Some((b'"', s)) => Ok((Some(b'"'), s)),
+                Some((b'\\', s)) => Ok((Some(b'\\'), s)),
+                Some((b'/', s)) => Ok((Some(b'/'), s)),
+                Some((b'b', s)) => Ok((Some(0x08), s)), // rust doesn't support \b
+                Some((b'f', s)) => Ok((Some(0x0C), s)), // rust doesn't support \f
+                Some((b'n', s)) => Ok((Some(b'\n'), s)),
+                Some((b'r', s)) => Ok((Some(b'\r'), s)),
+                Some((b't', s)) => Ok((Some(b'\t'), s)),
+                Some((b'u', s)) => {
+                    let (c, s) = hexword(s)?;
                     Ok((Some(c), s))
                 }
                 _ => Err((Error::UnrecognisedEscapeSequence(s[1]), s)),
             }
         }
-        Some(c) => Ok((Some(*c), &s[1..])),
+        Some((c, s)) => Ok((Some(*c), s)),
     }
 }
 
