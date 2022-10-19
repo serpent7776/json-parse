@@ -6,18 +6,15 @@ use std::fmt;
 pub enum Json {
     Null,
     Bool(bool),
-    Number(Number),
+    Number{
+        integer: i64,
+        fraction: i64,
+        precision: usize,
+        exponent: i64,
+    },
     String(String),
     Array(Vec<Json>),
     Object(Dict),
-}
-
-#[derive(Debug, PartialEq)]
-pub struct Number {
-    integer: i64,
-    fraction: i64,
-    precision: usize,
-    exponent: i64,
 }
 
 #[derive(Debug, PartialEq)]
@@ -185,26 +182,24 @@ fn parse_number_parts(s: &[u8]) -> Result<(i64, i64, usize, i64, &[u8]), (Error,
 
 fn parse_number(s: &[u8]) -> JsonPart {
     let (ints, fractions, precision, exponent, s) = parse_number_parts(s)?;
-    let number = Number {
+    let json = Json::Number{
         integer: ints,
         fraction: fractions,
         precision: precision,
         exponent: exponent,
     };
-    let json = Json::Number(number);
     Ok((json, s))
 }
 
 fn parse_negative_number(s: &[u8]) -> JsonPart {
     let (_, s) = chr(s, b'-')?;
     let (ints, fractions, precision, exponent, s) = parse_number_parts(s)?;
-    let number = Number {
+    let json = Json::Number{
         integer: -ints,
         fraction: fractions,
         precision: precision,
         exponent: exponent,
     };
-    let json = Json::Number(number);
     Ok((json, s))
 }
 
@@ -427,18 +422,18 @@ mod tests {
     fails!(parse, "truefalse", Error::TrueExpected, unknown_ident_truefalse);
 
     // numbers
-    ok!(parse, "42", Json::Number(Number{integer: 42, fraction: 0, precision: 0, exponent: 0}), number_parses_ok);
-    ok!(parse, "0", Json::Number(Number{integer: 0, fraction: 0, precision: 0, exponent: 0}), zero_parses_ok);
-    ok!(parse, "-1", Json::Number(Number{integer: -1, fraction: 0, precision: 0, exponent: 0}), negative_parses_ok);
-    ok!(parse, "1.23", Json::Number(Number{integer: 1, fraction: 23, precision: 2, exponent: 0}), float_parses_ok);
-    ok!(parse, "1.230", Json::Number(Number{integer: 1, fraction: 230, precision: 3, exponent: 0}), float_with_trailing_zero_parses_ok);
-    ok!(parse, "1.", Json::Number(Number{integer: 1, fraction: 0, precision: 0, exponent: 0}), float_without_fraction_parses_ok);
-    ok!(parse, "0.", Json::Number(Number{integer: 0, fraction: 0, precision: 0, exponent: 0}), zero_without_fraction_parses_ok);
-    ok!(parse, "-0.", Json::Number(Number{integer: 0, fraction: 0, precision: 0, exponent: 0}), negative_zero_without_fraction_parses_ok);
-    ok!(parse, "6.999e3", Json::Number(Number{integer: 6, fraction: 999, precision: 3, exponent: 3}), float_with_exponent_parses_ok);
-    ok!(parse, "-1.2e9", Json::Number(Number{integer: -1, fraction: 2, precision: 1, exponent: 9}), negative_float_with_exponent_parses_ok);
+    ok!(parse, "42", Json::Number{integer: 42, fraction: 0, precision: 0, exponent: 0}, number_parses_ok);
+    ok!(parse, "0", Json::Number{integer: 0, fraction: 0, precision: 0, exponent: 0}, zero_parses_ok);
+    ok!(parse, "-1", Json::Number{integer: -1, fraction: 0, precision: 0, exponent: 0}, negative_parses_ok);
+    ok!(parse, "1.23", Json::Number{integer: 1, fraction: 23, precision: 2, exponent: 0}, float_parses_ok);
+    ok!(parse, "1.230", Json::Number{integer: 1, fraction: 230, precision: 3, exponent: 0}, float_with_trailing_zero_parses_ok);
+    ok!(parse, "1.", Json::Number{integer: 1, fraction: 0, precision: 0, exponent: 0}, float_without_fraction_parses_ok);
+    ok!(parse, "0.", Json::Number{integer: 0, fraction: 0, precision: 0, exponent: 0}, zero_without_fraction_parses_ok);
+    ok!(parse, "-0.", Json::Number{integer: 0, fraction: 0, precision: 0, exponent: 0}, negative_zero_without_fraction_parses_ok);
+    ok!(parse, "6.999e3", Json::Number{integer: 6, fraction: 999, precision: 3, exponent: 3}, float_with_exponent_parses_ok);
+    ok!(parse, "-1.2e9", Json::Number{integer: -1, fraction: 2, precision: 1, exponent: 9}, negative_float_with_exponent_parses_ok);
     fails!(parse, "6.999e", Error::ExponentRequired, float_without_exponent_fails_to_parse);
-    ok!(parse, "1.e1", Json::Number(Number{integer: 1, fraction: 0, precision: 0, exponent: 1}), float_with_exponent_but_without_fractin_parses_ok);
+    ok!(parse, "1.e1", Json::Number{integer: 1, fraction: 0, precision: 0, exponent: 1}, float_with_exponent_but_without_fractin_parses_ok);
     fails!(parse, "1.x", Error::Garbage, float_with_invalid_fraction_fails_to_parse);
     fails!(parse, "-1.y", Error::Garbage, negative_float_with_invalid_fraction_fails_to_parse);
     fails!(parse, ".12", Error::InvalidValue, float_without_integer_part_fails_to_parse);
@@ -472,7 +467,7 @@ mod tests {
     ok!(parse, "[true]", Json::Array(vec![Json::Bool(true)]), array_with_true_parses_ok);
     ok!(parse, "[false]", Json::Array(vec![Json::Bool(false)]), array_with_false_parses_ok);
     ok!(parse, "[true,false]", Json::Array(vec![Json::Bool(true), Json::Bool(false)]), array_with_true_and_false_parses_ok);
-    ok!(parse, "[1.2]", Json::Array(vec![ (Json::Number (Number{integer : 1, fraction : 2, precision : 1, exponent : 0})) ]), array_with_single_number_parses_ok);
+    ok!(parse, "[1.2]", Json::Array(vec![ (Json::Number{integer : 1, fraction : 2, precision : 1, exponent : 0}) ]), array_with_single_number_parses_ok);
     ok!(parse, r#"["abc"]"#, Json::Array(vec![ Json::String(String::from("abc")) ]), array_with_string_parses_ok);
     ok!(parse, "[[[]]]", Json::Array(vec![ Json::Array(vec![ Json::Array(Vec::new()) ]) ]), deeply_nested_empty_array_parses_ok);
     ok!(parse, "[[[\"a\"]]]", Json::Array(vec![ Json::Array(vec![ Json::Array(vec![ Json::String(String::from("a")) ]) ]) ]), deeply_nested_array_with_string_parses_ok);
@@ -481,14 +476,14 @@ mod tests {
     fails!(parse, "[[[", Error::OutOfBounds, multiple_opening_brackets_fail_to_parse_as_array);
     fails!(parse, "]]]", Error::InvalidValue, multiple_closing_brackets_fail_to_parse_as_array);
     ok!(parse, "[1,2,3]", Json::Array (vec![
-                                       Json::Number (Number{integer : 1, fraction : 0, precision : 0, exponent : 0}),
-                                       Json::Number (Number{integer : 2, fraction : 0, precision : 0, exponent : 0}),
-                                       Json::Number (Number{integer : 3, fraction : 0, precision : 0, exponent : 0}),
+                                       Json::Number{integer : 1, fraction : 0, precision : 0, exponent : 0},
+                                       Json::Number{integer : 2, fraction : 0, precision : 0, exponent : 0},
+                                       Json::Number{integer : 3, fraction : 0, precision : 0, exponent : 0},
     ]), array_with_numbers_parses_ok);
     fails!(parse, r#"[""#, Error::OutOfBounds, unclosed_string_in_unclosed_array_fail_to_parse);
     ok!(parse, "[true,false,null,0]", Json::Array (vec![
                                                    (Json::Bool(true)), (Json::Bool(false)), Json::Null,
-                                                   Json::Number (Number{integer : 0, fraction : 0, precision : 0, exponent : 0}),
+                                                   Json::Number{integer : 0, fraction : 0, precision : 0, exponent : 0},
     ]), array_with_different_types_parses_ok);
     ok!(parse, "[[],[]]", Json::Array(vec![ Json::Array(Vec::new()), Json::Array(Vec::new()) ]), nested_array_parses_ok);
     fails!(parse, "[1,", Error::OutOfBounds, missing_closing_bracket_after_first_element);
@@ -498,16 +493,16 @@ mod tests {
 
     // objects
     ok!(parse, "{}", Json::Object(Dict::new()), empty_object_parses_ok);
-    ok!(parse, r#"{"1":1}"#, Json::Object(Dict::from([(String::from("1"), Json::Number(Number{integer : 1, fraction : 0, precision : 0, exponent : 0}))]) ), object_with_single_key_value_pair_parses_ok);
+    ok!(parse, r#"{"1":1}"#, Json::Object(Dict::from([(String::from("1"), Json::Number{integer : 1, fraction : 0, precision : 0, exponent : 0})]) ), object_with_single_key_value_pair_parses_ok);
     ok!(parse, r#"{"foo":"bar"}"#, Json::Object(Dict::from([ (String::from("foo"), Json::String(String::from("bar"))) ])), object_with_string_value_parses_ok);
     ok!(parse, r#"{"":""}"#, Json::Object(Dict::from([ (String::from(""), Json::String(String::from(""))) ])), object_with_empty_key_parses_ok);
     ok!(parse, r#"{"12":[]}"#, Json::Object(Dict::from([ (String::from("12"), Json::Array(Vec::new()) ) ])), object_with_empty_array_value_parses_ok);
     ok!(parse, r#"{"a":1,"b":2,"c":3}"#, Json::Object(Dict::from([
-                                                               (String::from("a"), Json::Number(Number{integer : 1, fraction : 0, precision : 0, exponent : 0}) ),
-                                                               (String::from("b"), Json::Number(Number{integer : 2, fraction : 0, precision : 0, exponent : 0}) ),
-                                                               (String::from("c"), Json::Number(Number{integer : 3, fraction : 0, precision : 0, exponent : 0}) ),
+                                                               (String::from("a"), Json::Number{integer : 1, fraction : 0, precision : 0, exponent : 0} ),
+                                                               (String::from("b"), Json::Number{integer : 2, fraction : 0, precision : 0, exponent : 0} ),
+                                                               (String::from("c"), Json::Number{integer : 3, fraction : 0, precision : 0, exponent : 0} ),
     ])), object_with_many_integer_values_parses_ok);
-    ok!(parse, r#"{"x":9.8e7}"#, Json::Object(Dict::from([ (String::from("x"), Json::Number(Number{integer : 9, fraction : 8, precision : 1, exponent : 7}) ) ])), object_with_float_number_value_parses_ok);
+    ok!(parse, r#"{"x":9.8e7}"#, Json::Object(Dict::from([ (String::from("x"), Json::Number{integer : 9, fraction : 8, precision : 1, exponent : 7} ) ])), object_with_float_number_value_parses_ok);
     fails!(parse, r#"{"1":1"#, Error::OutOfBounds, missing_closing_paren);
     fails!(parse, r#"{"foo"}"#, Error::CharMismatch{expected: b':', actual: b'}'}, missing_colon_and_value_after_key);
     fails!(parse, r#"{"foo":}"#, Error::InvalidValue, missing_value_after_key);
@@ -547,7 +542,7 @@ impl fmt::Display for Json {
         match self {
             Json::Null => write!(fmt, "null"),
             Json::Bool(b) => write!(fmt, "{}", b),
-            Json::Number(num) => write!(fmt, "{}", num),
+            Json::Number{integer, fraction, precision, exponent} => print_number(fmt, *integer, *fraction, *precision, *exponent),
             Json::String(s) => write!(fmt, "\"{}\"", escape(s)),
             Json::Array(arr) => print_json_array(arr, fmt),
             Json::Object(dict) => print_json_object(dict, fmt),
@@ -555,17 +550,15 @@ impl fmt::Display for Json {
     }
 }
 
-impl fmt::Display for Number {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let r = write!(fmt, "{}", self.integer);
-        if self.precision > 0 {
-            write!(fmt, ".{}", self.fraction)?;
-        }
-        if self.exponent != 0 {
-            write!(fmt, "e{}", self.exponent)?;
-        }
-        r
+fn print_number(fmt: &mut fmt::Formatter, integer: i64, fraction: i64, precision: usize, exponent: i64) -> fmt::Result {
+    let r = write!(fmt, "{}", integer);
+    if precision > 0 {
+        write!(fmt, ".{}", fraction)?;
     }
+    if exponent != 0 {
+        write!(fmt, "e{}", exponent)?;
+    }
+    r
 }
 
 fn print_json_array(arr: &Vec<Json>, fmt: &mut fmt::Formatter) -> fmt::Result {
