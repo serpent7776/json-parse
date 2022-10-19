@@ -1,12 +1,12 @@
 use std::collections::HashMap;
-use std::string::FromUtf8Error;
 use std::fmt;
+use std::string::FromUtf8Error;
 
 #[derive(PartialEq)]
 pub enum Json {
     Null,
     Bool(bool),
-    Number{
+    Number {
         integer: i64,
         fraction: i64,
         precision: usize,
@@ -22,7 +22,12 @@ impl fmt::Display for Json {
         match self {
             Json::Null => write!(fmt, "null"),
             Json::Bool(b) => write!(fmt, "{}", b),
-            Json::Number{integer, fraction, precision, exponent} => print_number(fmt, *integer, *fraction, *precision, *exponent),
+            Json::Number {
+                integer,
+                fraction,
+                precision,
+                exponent,
+            } => print_number(fmt, *integer, *fraction, *precision, *exponent),
             Json::String(s) => write!(fmt, "\"{}\"", escape(s)),
             Json::Array(arr) => print_json_array(arr, fmt),
             Json::Object(dict) => print_json_object(dict, fmt),
@@ -50,14 +55,18 @@ impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::EmptyString => write!(fmt, "Empty string parsed"),
-            Error::CharMismatch{expected, actual} => write!(fmt, "Expected {}, but read {}", expected, actual),
+            Error::CharMismatch { expected, actual } => {
+                write!(fmt, "Expected {}, but read {}", expected, actual)
+            }
             Error::HexCharExpected => write!(fmt, "Expected hex char"),
             Error::UtfDecodingError(error) => write!(fmt, "{}", error),
             Error::NullExpected => write!(fmt, "Expected null"),
             Error::TrueExpected => write!(fmt, "Expected true"),
             Error::FalseExpected => write!(fmt, "Expected false"),
             Error::ExponentRequired => write!(fmt, "Exponent required"),
-            Error::UnrecognisedEscapeSequence(ch) => write!(fmt, "Unrecognised escape sequence \\{}", ch),
+            Error::UnrecognisedEscapeSequence(ch) => {
+                write!(fmt, "Unrecognised escape sequence \\{}", ch)
+            }
             Error::InvalidValue => write!(fmt, "Invalid value"),
             Error::OutOfBounds => write!(fmt, "Out of bounds read attempt"),
             Error::Garbage => write!(fmt, "garbage found at the end of string"),
@@ -214,7 +223,7 @@ fn parse_number_parts(s: &[u8]) -> Result<(i64, i64, usize, i64, &[u8]), (Error,
 
 fn parse_number(s: &[u8]) -> JsonPart {
     let (ints, fractions, precision, exponent, s) = parse_number_parts(s)?;
-    let json = Json::Number{
+    let json = Json::Number {
         integer: ints,
         fraction: fractions,
         precision: precision,
@@ -226,7 +235,7 @@ fn parse_number(s: &[u8]) -> JsonPart {
 fn parse_negative_number(s: &[u8]) -> JsonPart {
     let (_, s) = chr(s, b'-')?;
     let (ints, fractions, precision, exponent, s) = parse_number_parts(s)?;
-    let json = Json::Number{
+    let json = Json::Number {
         integer: -ints,
         fraction: fractions,
         precision: precision,
@@ -569,7 +578,13 @@ fn escape(s: &String) -> String {
     s.chars().flat_map(esc).collect()
 }
 
-fn print_number(fmt: &mut fmt::Formatter, integer: i64, fraction: i64, precision: usize, exponent: i64) -> fmt::Result {
+fn print_number(
+    fmt: &mut fmt::Formatter,
+    integer: i64,
+    fraction: i64,
+    precision: usize,
+    exponent: i64,
+) -> fmt::Result {
     let r = write!(fmt, "{}", integer);
     if precision > 0 {
         write!(fmt, ".{}", fraction)?;
