@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::string::FromUtf8Error;
 use std::fmt;
 
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub enum Json {
     Null,
     Bool(bool),
@@ -30,7 +30,7 @@ impl fmt::Display for Json {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub enum Error {
     EmptyString,
     CharMismatch { expected: u8, actual: u8 },
@@ -395,14 +395,14 @@ mod tests {
         match actual {
             Err((actual_err, _)) => assert!(
                 expected_err == actual_err,
-                "\n\tFailed for {}: Expected to fail with {:?}, but failed with {:?} instead",
+                "\n\tFailed for {}: Expected to fail with {}, but failed with {} instead",
                 arg,
                 expected_err,
                 actual_err
             ),
             Ok(actual_json) => assert!(
                 false,
-                "\n\tFailed for {}: Expected to fail with {:?}, but got {:?}",
+                "\n\tFailed for {}: Expected to fail with {}, but got {}",
                 arg, expected_err, actual_json
             ),
         }
@@ -413,14 +413,14 @@ mod tests {
         match actual {
             Ok(actual_json) => assert!(
                 expected_json == actual_json,
-                "\n\tFailed for {}: Expected to return {:?}, but returned {:?} instead",
+                "\n\tFailed for {}: Expected to return {}, but returned {} instead",
                 arg,
                 expected_json,
                 actual_json
             ),
             Err((actual_err, _)) => assert!(
                 false,
-                "\n\tFailed for {}: Expected to succeed as {:?}, but failed with {:?}",
+                "\n\tFailed for {}: Expected to succeed as {}, but failed with {}",
                 arg, expected_json, actual_err
             ),
         }
