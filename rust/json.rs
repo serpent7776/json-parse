@@ -17,6 +17,19 @@ pub enum Json {
     Object(Dict),
 }
 
+impl fmt::Display for Json {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Json::Null => write!(fmt, "null"),
+            Json::Bool(b) => write!(fmt, "{}", b),
+            Json::Number{integer, fraction, precision, exponent} => print_number(fmt, *integer, *fraction, *precision, *exponent),
+            Json::String(s) => write!(fmt, "\"{}\"", escape(s)),
+            Json::Array(arr) => print_json_array(arr, fmt),
+            Json::Object(dict) => print_json_object(dict, fmt),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Error {
     EmptyString,
@@ -31,6 +44,25 @@ pub enum Error {
     InvalidValue,
     OutOfBounds,
     Garbage,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Error::EmptyString => write!(fmt, "Empty string parsed"),
+            Error::CharMismatch{expected, actual} => write!(fmt, "Expected {}, but read {}", expected, actual),
+            Error::HexCharExpected => write!(fmt, "Expected hex char"),
+            Error::UtfDecodingError(error) => write!(fmt, "{}", error),
+            Error::NullExpected => write!(fmt, "Expected null"),
+            Error::TrueExpected => write!(fmt, "Expected true"),
+            Error::FalseExpected => write!(fmt, "Expected false"),
+            Error::ExponentRequired => write!(fmt, "Exponent required"),
+            Error::UnrecognisedEscapeSequence(ch) => write!(fmt, "Unrecognised escape sequence \\{}", ch),
+            Error::InvalidValue => write!(fmt, "Invalid value"),
+            Error::OutOfBounds => write!(fmt, "Out of bounds read attempt"),
+            Error::Garbage => write!(fmt, "garbage found at the end of string"),
+        }
+    }
 }
 
 type Idx = usize;
@@ -535,19 +567,6 @@ fn escape(s: &String) -> String {
         c => vec![c],
     };
     s.chars().flat_map(esc).collect()
-}
-
-impl fmt::Display for Json {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Json::Null => write!(fmt, "null"),
-            Json::Bool(b) => write!(fmt, "{}", b),
-            Json::Number{integer, fraction, precision, exponent} => print_number(fmt, *integer, *fraction, *precision, *exponent),
-            Json::String(s) => write!(fmt, "\"{}\"", escape(s)),
-            Json::Array(arr) => print_json_array(arr, fmt),
-            Json::Object(dict) => print_json_object(dict, fmt),
-        }
-    }
 }
 
 fn print_number(fmt: &mut fmt::Formatter, integer: i64, fraction: i64, precision: usize, exponent: i64) -> fmt::Result {
