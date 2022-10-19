@@ -161,21 +161,21 @@ fn chr(s: &[u8], ch: u8) -> Result<(u8, &[u8]), (Error, &[u8])> {
 
 fn parse_null(s: &[u8]) -> JsonPart {
     match take(s, is_alpha) {
-        Ok((&[b'n', b'u', b'l', b'l'], s)) => Ok((Json::Null, s)),
+        Ok((b"null", s)) => Ok((Json::Null, s)),
         _ => Err((Error::NullExpected, s)),
     }
 }
 
 fn parse_true(s: &[u8]) -> JsonPart {
     match take(s, is_alpha) {
-        Ok((&[b't', b'r', b'u', b'e'], s)) => Ok((Json::Bool(true), s)),
+        Ok((b"true", s)) => Ok((Json::Bool(true), s)),
         _ => Err((Error::TrueExpected, s)),
     }
 }
 
 fn parse_false(s: &[u8]) -> JsonPart {
     match take(s, is_alpha) {
-        Ok((&[b'f', b'a', b'l', b's', b'e'], s)) => Ok((Json::Bool(false), s)),
+        Ok((b"false", s)) => Ok((Json::Bool(false), s)),
         _ => Err((Error::FalseExpected, s)),
     }
 }
