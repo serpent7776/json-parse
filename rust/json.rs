@@ -578,9 +578,9 @@ fn print_json_object(obj: &Dict, fmt: &mut fmt::Formatter) -> fmt::Result {
     write!(fmt, "{{")?;
     let mut iter = obj.iter();
     if let Some((key, value)) = iter.next() {
-        write!(fmt, "\"{}\": {}\n", escape(key), value)?;
+        write!(fmt, "\"{}\": {}", escape(key), value)?;
         for (key, value) in iter {
-            write!(fmt, ", \"{}\": {}\n", escape(key), value)?;
+            write!(fmt, ", \"{}\": {}", escape(key), value)?;
         }
     }
     write!(fmt, "}}")
