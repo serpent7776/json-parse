@@ -104,7 +104,7 @@ fn take(s: &[u8], f: impl Fn(u8) -> bool) -> Result<(&[u8], &[u8]), (Error, &[u8
         i += 1;
     }
     if i > 0 {
-        Ok((&s[0..i], &s[i..]))
+        Ok(s.split_at(i))
     } else {
         Err((Error::EmptyString, s))
     }
