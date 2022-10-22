@@ -108,6 +108,8 @@ val _ =
   ok parse "1.e1" (Number {integer = 1, fraction = 0, precision = 0, exponent = 1});
   fails parse "1.x" Garbage;
   fails parse "-1.y" Garbage;
+  fails parse ".12" InvalidValue;
+  fails parse "-.12" NumberExpected;
 
   (* strings *)
   ok parse "\"\"" (String "");
@@ -127,6 +129,7 @@ val _ =
   ok parse "\"\\u1234\\uabcd\"" (String "??");
   ok parse "\"\\u1234\\uabcd\\u00Ff\"" (String "???");
   ok parse "\"foo\\u12cdbar\"" (String "foo?bar");
+  fails parse "\"\\u12cx\"" (HexCharExpected);
   fails parse "\"\\" OutOfBounds;
 
   (* arrays *)
@@ -135,7 +138,7 @@ val _ =
   ok parse "[[null]]" (Array [Array [Null]]);
   ok parse "[true]" (Array [Bool true]);
   ok parse "[false]" (Array [Bool false]);
-  ok parse "[true, false]" (Array [Bool true, Bool false]);
+  ok parse "[true,false]" (Array [Bool true, Bool false]);
   ok parse "[1.2]" (Array [Number {integer = 1, fraction = 2, precision = 1, exponent = 0}]);
   ok parse "[\"abc\"]" (Array [String "abc"]);
   ok parse "[[[]]]" (Array [Array [Array []]]);
@@ -144,7 +147,7 @@ val _ =
   fails parse "]" InvalidValue;
   fails parse "[[[" (CharMismatch #"]");
   fails parse "]]]" InvalidValue;
-  ok parse "[1, 2, 3]" (Array [
+  ok parse "[1,2,3]" (Array [
     Number {integer = 1, fraction = 0, precision = 0, exponent = 0},
     Number {integer = 2, fraction = 0, precision = 0, exponent = 0},
     Number {integer = 3, fraction = 0, precision = 0, exponent = 0}

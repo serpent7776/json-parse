@@ -80,6 +80,8 @@ let () =
         ok parse "1.e1" (Number {integer = 1; fraction = 0; precision = 0; exponent = 1});
         fails parse "1.x" Garbage;
         fails parse "-1.y" Garbage;
+        fails parse ".12" InvalidValue;
+        fails parse "-.12" EmptyString;
 
         (* strings *)
         ok parse {|""|} (String "");
@@ -108,7 +110,7 @@ let () =
         ok parse "[[null]]" (Array [ Array [ Null ] ]);
         ok parse "[true]" (Array [ (Bool true) ]);
         ok parse "[false]" (Array [ (Bool false) ]);
-        ok parse "[true, false]" (Array [Bool true; Bool false]);
+        ok parse "[true,false]" (Array [Bool true; Bool false]);
         ok parse "[1.2]" (Array [ (Number {integer = 1; fraction = 2; precision = 1; exponent = 0}) ]);
         ok parse {|["abc"]|} (Array [ (String "abc") ]);
         ok parse "[[[]]]" (Array [ Array [ Array [ ] ] ]);
