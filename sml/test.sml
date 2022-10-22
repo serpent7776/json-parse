@@ -109,7 +109,7 @@ val _ =
   fails parse "1.x" Garbage;
   fails parse "-1.y" Garbage;
   fails parse ".12" InvalidValue;
-  fails parse "-.12" NumberExpected;
+  fails parse "-.12" EmptyString;
 
   (* strings *)
   ok parse "\"\"" (String "");

@@ -159,8 +159,7 @@ fun parse1 (str, strlen) =
                  Ok (exp, idx') => Ok ((num, frac, exp), idx')
                | Error (e, _) => Error (ExponentRequired, idx)
       in
-        take (Char.isDigit, idx) >>!
-        (fn (_, idx) => Error (NumberExpected, idx)) >>=
+        take (Char.isDigit, idx) >>=
         (fn (num, idx) =>
           case chr (#".", idx) of
               Ok (_, idx') => parse_fraction (num, idx')
