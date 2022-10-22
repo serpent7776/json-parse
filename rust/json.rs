@@ -376,9 +376,9 @@ fn parse_value(s: &[u8]) -> JsonPart {
     }
 }
 
-pub fn parse(s: String) -> JsonResult {
-    let len = s.as_bytes().len();
-    let s = skip_ws(s.as_bytes());
+pub fn parse_bytes(s: &[u8]) -> JsonResult {
+    let len = s.len();
+    let s = skip_ws(s);
     if s.is_empty() {
         return Err((Error::EmptyString, 0));
     }
@@ -395,12 +395,16 @@ pub fn parse(s: String) -> JsonResult {
     }
 }
 
+pub fn parse_str(s: &str) -> JsonResult {
+    parse_bytes(s.as_bytes())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn fails<F: FnOnce(String) -> JsonResult>(f: F, arg: &str, expected_err: Error) {
-        let actual = f(String::from(arg));
+    fn fails<F: FnOnce(&str) -> JsonResult>(f: F, arg: &str, expected_err: Error) {
+        let actual = f(arg);
         match actual {
             Err((actual_err, _)) => assert!(
                 expected_err == actual_err,
@@ -417,8 +421,8 @@ mod tests {
         }
     }
 
-    fn ok<F: FnOnce(String) -> JsonResult>(f: F, arg: &str, expected_json: Json) {
-        let actual = f(String::from(arg));
+    fn ok<F: FnOnce(&str) -> JsonResult>(f: F, arg: &str, expected_json: Json) {
+        let actual = f(arg);
         match actual {
             Ok(actual_json) => assert!(
                 expected_json == actual_json,
@@ -453,114 +457,114 @@ mod tests {
         };
     }
 
-    fails!(parse, "", Error::EmptyString, empty_string_fails_to_parse);
-    fails!(parse, "x", Error::InvalidValue, incorrect_value_fails);
+    fails!(parse_str, "", Error::EmptyString, empty_string_fails_to_parse);
+    fails!(parse_str, "x", Error::InvalidValue, incorrect_value_fails);
 
     // literals
-    ok!(parse, "null", Json::Null, null_parses_ok);
-    ok!(parse, "true", Json::Bool(true), true_parses_ok);
-    ok!(parse, "false", Json::Bool(false), false_parses_ok);
-    fails!(parse, "truefalse", Error::TrueExpected, unknown_ident_truefalse);
+    ok!(parse_str, "null", Json::Null, null_parses_ok);
+    ok!(parse_str, "true", Json::Bool(true), true_parses_ok);
+    ok!(parse_str, "false", Json::Bool(false), false_parses_ok);
+    fails!(parse_str, "truefalse", Error::TrueExpected, unknown_ident_truefalse);
 
     // numbers
-    ok!(parse, "42", Json::Number{integer: 42, fraction: 0, precision: 0, exponent: 0}, number_parses_ok);
-    ok!(parse, "0", Json::Number{integer: 0, fraction: 0, precision: 0, exponent: 0}, zero_parses_ok);
-    ok!(parse, "-1", Json::Number{integer: -1, fraction: 0, precision: 0, exponent: 0}, negative_parses_ok);
-    ok!(parse, "1.23", Json::Number{integer: 1, fraction: 23, precision: 2, exponent: 0}, float_parses_ok);
-    ok!(parse, "1.230", Json::Number{integer: 1, fraction: 230, precision: 3, exponent: 0}, float_with_trailing_zero_parses_ok);
-    ok!(parse, "1.", Json::Number{integer: 1, fraction: 0, precision: 0, exponent: 0}, float_without_fraction_parses_ok);
-    ok!(parse, "0.", Json::Number{integer: 0, fraction: 0, precision: 0, exponent: 0}, zero_without_fraction_parses_ok);
-    ok!(parse, "-0.", Json::Number{integer: 0, fraction: 0, precision: 0, exponent: 0}, negative_zero_without_fraction_parses_ok);
-    ok!(parse, "6.999e3", Json::Number{integer: 6, fraction: 999, precision: 3, exponent: 3}, float_with_exponent_parses_ok);
-    ok!(parse, "-1.2e9", Json::Number{integer: -1, fraction: 2, precision: 1, exponent: 9}, negative_float_with_exponent_parses_ok);
-    fails!(parse, "6.999e", Error::ExponentRequired, float_without_exponent_fails_to_parse);
-    ok!(parse, "1.e1", Json::Number{integer: 1, fraction: 0, precision: 0, exponent: 1}, float_with_exponent_but_without_fractin_parses_ok);
-    fails!(parse, "1.x", Error::Garbage, float_with_invalid_fraction_fails_to_parse);
-    fails!(parse, "-1.y", Error::Garbage, negative_float_with_invalid_fraction_fails_to_parse);
-    fails!(parse, ".12", Error::InvalidValue, float_without_integer_part_fails_to_parse);
-    fails!(parse, "-.12", Error::EmptyString, negative_float_without_integer_part_fails_to_parse);
+    ok!(parse_str, "42", Json::Number{integer: 42, fraction: 0, precision: 0, exponent: 0}, number_parses_ok);
+    ok!(parse_str, "0", Json::Number{integer: 0, fraction: 0, precision: 0, exponent: 0}, zero_parses_ok);
+    ok!(parse_str, "-1", Json::Number{integer: -1, fraction: 0, precision: 0, exponent: 0}, negative_parses_ok);
+    ok!(parse_str, "1.23", Json::Number{integer: 1, fraction: 23, precision: 2, exponent: 0}, float_parses_ok);
+    ok!(parse_str, "1.230", Json::Number{integer: 1, fraction: 230, precision: 3, exponent: 0}, float_with_trailing_zero_parses_ok);
+    ok!(parse_str, "1.", Json::Number{integer: 1, fraction: 0, precision: 0, exponent: 0}, float_without_fraction_parses_ok);
+    ok!(parse_str, "0.", Json::Number{integer: 0, fraction: 0, precision: 0, exponent: 0}, zero_without_fraction_parses_ok);
+    ok!(parse_str, "-0.", Json::Number{integer: 0, fraction: 0, precision: 0, exponent: 0}, negative_zero_without_fraction_parses_ok);
+    ok!(parse_str, "6.999e3", Json::Number{integer: 6, fraction: 999, precision: 3, exponent: 3}, float_with_exponent_parses_ok);
+    ok!(parse_str, "-1.2e9", Json::Number{integer: -1, fraction: 2, precision: 1, exponent: 9}, negative_float_with_exponent_parses_ok);
+    fails!(parse_str, "6.999e", Error::ExponentRequired, float_without_exponent_fails_to_parse);
+    ok!(parse_str, "1.e1", Json::Number{integer: 1, fraction: 0, precision: 0, exponent: 1}, float_with_exponent_but_without_fractin_parses_ok);
+    fails!(parse_str, "1.x", Error::Garbage, float_with_invalid_fraction_fails_to_parse);
+    fails!(parse_str, "-1.y", Error::Garbage, negative_float_with_invalid_fraction_fails_to_parse);
+    fails!(parse_str, ".12", Error::InvalidValue, float_without_integer_part_fails_to_parse);
+    fails!(parse_str, "-.12", Error::EmptyString, negative_float_without_integer_part_fails_to_parse);
 
     // strings
-    ok!(parse, r#""""#, Json::String(String::from("")), empty_string_parses_ok);
-    fails!(parse, r#"""#, Error::OutOfBounds, missing_ending_quote_in_empty_string);
-    ok!(parse, r#""foobar""#, Json::String(String::from("foobar")), nonempty_string_parses_ok);
-    ok!(parse, r#""a\nb""#, Json::String(String::from("a\nb")), string_with_newline_parses_ok);
-    ok!(parse, r#""foo\\bar""#, Json::String(String::from(r#"foo\bar"#)), string_with_escaped_backslash_parses_ok);
-    ok!(parse, r#""foo bar""#, Json::String(String::from("foo bar")), string_with_space_parses_ok);
-    ok!(parse, r#""foo/bar""#, Json::String(String::from("foo/bar")), string_with_slash_parses_ok);
-    fails!(parse, r#""foobar"#, Error::OutOfBounds, missing_ending_quote_in_nonempty_string);
-    fails!(parse, r#""foo"bar"#, Error::Garbage, extra_letters_after_string);
-    fails!(parse, r#""foo\"bar"#, Error::OutOfBounds, missing_ending_quote_with_inner_escaped_quote);
-    ok!(parse, r#""a b c""#, Json::String(String::from("a b c")), string_with_inner_spaces_parses_ok);
-    ok!(parse, r#"" a b c ""#, Json::String(String::from(" a b c ")), string_with_leading_trailing_spaces_parses_ok);
-    ok!(parse, r#""foo\"bar""#, Json::String(String::from(r#"foo"bar"#)), string_with_escaped_quote_parses_ok);
-    ok!(parse, r#""\u1234""#, Json::String(String::from("?")), unicode_symbol_parses_ok);
-    ok!(parse, r#""\u1234\uabcd""#, Json::String(String::from("??")), string_with_two_unicode_symbols_parses_ok);
-    ok!(parse, r#""\u1234\uabcd\u00Ff""#, Json::String(String::from("???")), string_with_three_unicode_symbols_parses_ok);
-    ok!(parse, r#""foo\u12cdbar""#, Json::String(String::from("foo?bar")), string_with_inner_unicode_symbol_parses_ok);
-    fails!(parse, r#""\u12cx""#, Error::HexCharExpected, invalid_unicode_sequence);
-    fails!(parse, r#""\"#, Error::OutOfBounds, missing_ending_quote_with_escaped_quote);
+    ok!(parse_str, r#""""#, Json::String(String::from("")), empty_string_parses_ok);
+    fails!(parse_str, r#"""#, Error::OutOfBounds, missing_ending_quote_in_empty_string);
+    ok!(parse_str, r#""foobar""#, Json::String(String::from("foobar")), nonempty_string_parses_ok);
+    ok!(parse_str, r#""a\nb""#, Json::String(String::from("a\nb")), string_with_newline_parses_ok);
+    ok!(parse_str, r#""foo\\bar""#, Json::String(String::from(r#"foo\bar"#)), string_with_escaped_backslash_parses_ok);
+    ok!(parse_str, r#""foo bar""#, Json::String(String::from("foo bar")), string_with_space_parses_ok);
+    ok!(parse_str, r#""foo/bar""#, Json::String(String::from("foo/bar")), string_with_slash_parses_ok);
+    fails!(parse_str, r#""foobar"#, Error::OutOfBounds, missing_ending_quote_in_nonempty_string);
+    fails!(parse_str, r#""foo"bar"#, Error::Garbage, extra_letters_after_string);
+    fails!(parse_str, r#""foo\"bar"#, Error::OutOfBounds, missing_ending_quote_with_inner_escaped_quote);
+    ok!(parse_str, r#""a b c""#, Json::String(String::from("a b c")), string_with_inner_spaces_parses_ok);
+    ok!(parse_str, r#"" a b c ""#, Json::String(String::from(" a b c ")), string_with_leading_trailing_spaces_parses_ok);
+    ok!(parse_str, r#""foo\"bar""#, Json::String(String::from(r#"foo"bar"#)), string_with_escaped_quote_parses_ok);
+    ok!(parse_str, r#""\u1234""#, Json::String(String::from("?")), unicode_symbol_parses_ok);
+    ok!(parse_str, r#""\u1234\uabcd""#, Json::String(String::from("??")), string_with_two_unicode_symbols_parses_ok);
+    ok!(parse_str, r#""\u1234\uabcd\u00Ff""#, Json::String(String::from("???")), string_with_three_unicode_symbols_parses_ok);
+    ok!(parse_str, r#""foo\u12cdbar""#, Json::String(String::from("foo?bar")), string_with_inner_unicode_symbol_parses_ok);
+    fails!(parse_str, r#""\u12cx""#, Error::HexCharExpected, invalid_unicode_sequence);
+    fails!(parse_str, r#""\"#, Error::OutOfBounds, missing_ending_quote_with_escaped_quote);
 
     // arrays
-    ok!(parse, "[]", Json::Array(Vec::new()), empty_array_parses_ok);
-    ok!(parse, "[null]", Json::Array(vec![ Json::Null ]), array_with_null_parses_ok);
-    ok!(parse, "[[null]]", Json::Array(vec![ Json::Array(vec![ Json::Null ]) ]), nested_array_with_null_parses_ok);
-    ok!(parse, "[true]", Json::Array(vec![Json::Bool(true)]), array_with_true_parses_ok);
-    ok!(parse, "[false]", Json::Array(vec![Json::Bool(false)]), array_with_false_parses_ok);
-    ok!(parse, "[true,false]", Json::Array(vec![Json::Bool(true), Json::Bool(false)]), array_with_true_and_false_parses_ok);
-    ok!(parse, "[1.2]", Json::Array(vec![ (Json::Number{integer : 1, fraction : 2, precision : 1, exponent : 0}) ]), array_with_single_number_parses_ok);
-    ok!(parse, r#"["abc"]"#, Json::Array(vec![ Json::String(String::from("abc")) ]), array_with_string_parses_ok);
-    ok!(parse, "[[[]]]", Json::Array(vec![ Json::Array(vec![ Json::Array(Vec::new()) ]) ]), deeply_nested_empty_array_parses_ok);
-    ok!(parse, "[[[\"a\"]]]", Json::Array(vec![ Json::Array(vec![ Json::Array(vec![ Json::String(String::from("a")) ]) ]) ]), deeply_nested_array_with_string_parses_ok);
-    fails!(parse, "[", Error::OutOfBounds, sole_opening_bracket_fails_to_parse_as_array);
-    fails!(parse, "]", Error::InvalidValue, sole_closing_bracket_fails_to_parse_as_array);
-    fails!(parse, "[[[", Error::OutOfBounds, multiple_opening_brackets_fail_to_parse_as_array);
-    fails!(parse, "]]]", Error::InvalidValue, multiple_closing_brackets_fail_to_parse_as_array);
-    ok!(parse, "[1,2,3]", Json::Array (vec![
+    ok!(parse_str, "[]", Json::Array(Vec::new()), empty_array_parses_ok);
+    ok!(parse_str, "[null]", Json::Array(vec![ Json::Null ]), array_with_null_parses_ok);
+    ok!(parse_str, "[[null]]", Json::Array(vec![ Json::Array(vec![ Json::Null ]) ]), nested_array_with_null_parses_ok);
+    ok!(parse_str, "[true]", Json::Array(vec![Json::Bool(true)]), array_with_true_parses_ok);
+    ok!(parse_str, "[false]", Json::Array(vec![Json::Bool(false)]), array_with_false_parses_ok);
+    ok!(parse_str, "[true,false]", Json::Array(vec![Json::Bool(true), Json::Bool(false)]), array_with_true_and_false_parses_ok);
+    ok!(parse_str, "[1.2]", Json::Array(vec![ (Json::Number{integer : 1, fraction : 2, precision : 1, exponent : 0}) ]), array_with_single_number_parses_ok);
+    ok!(parse_str, r#"["abc"]"#, Json::Array(vec![ Json::String(String::from("abc")) ]), array_with_string_parses_ok);
+    ok!(parse_str, "[[[]]]", Json::Array(vec![ Json::Array(vec![ Json::Array(Vec::new()) ]) ]), deeply_nested_empty_array_parses_ok);
+    ok!(parse_str, "[[[\"a\"]]]", Json::Array(vec![ Json::Array(vec![ Json::Array(vec![ Json::String(String::from("a")) ]) ]) ]), deeply_nested_array_with_string_parses_ok);
+    fails!(parse_str, "[", Error::OutOfBounds, sole_opening_bracket_fails_to_parse_as_array);
+    fails!(parse_str, "]", Error::InvalidValue, sole_closing_bracket_fails_to_parse_as_array);
+    fails!(parse_str, "[[[", Error::OutOfBounds, multiple_opening_brackets_fail_to_parse_as_array);
+    fails!(parse_str, "]]]", Error::InvalidValue, multiple_closing_brackets_fail_to_parse_as_array);
+    ok!(parse_str, "[1,2,3]", Json::Array (vec![
                                        Json::Number{integer : 1, fraction : 0, precision : 0, exponent : 0},
                                        Json::Number{integer : 2, fraction : 0, precision : 0, exponent : 0},
                                        Json::Number{integer : 3, fraction : 0, precision : 0, exponent : 0},
     ]), array_with_numbers_parses_ok);
-    fails!(parse, r#"[""#, Error::OutOfBounds, unclosed_string_in_unclosed_array_fail_to_parse);
-    ok!(parse, "[true,false,null,0]", Json::Array (vec![
+    fails!(parse_str, r#"[""#, Error::OutOfBounds, unclosed_string_in_unclosed_array_fail_to_parse);
+    ok!(parse_str, "[true,false,null,0]", Json::Array (vec![
                                                    (Json::Bool(true)), (Json::Bool(false)), Json::Null,
                                                    Json::Number{integer : 0, fraction : 0, precision : 0, exponent : 0},
     ]), array_with_different_types_parses_ok);
-    ok!(parse, "[[],[]]", Json::Array(vec![ Json::Array(Vec::new()), Json::Array(Vec::new()) ]), nested_array_parses_ok);
-    fails!(parse, "[1,", Error::OutOfBounds, missing_closing_bracket_after_first_element);
-    fails!(parse, "[1,]", Error::InvalidValue, missing_second_element_in_array);
-    fails!(parse, "[1,2,]", Error::InvalidValue, missing_third_element_in_array);
-    fails!(parse, "[1,2,", Error::OutOfBounds, missing_closing_bracket_after_second_element);
+    ok!(parse_str, "[[],[]]", Json::Array(vec![ Json::Array(Vec::new()), Json::Array(Vec::new()) ]), nested_array_parses_ok);
+    fails!(parse_str, "[1,", Error::OutOfBounds, missing_closing_bracket_after_first_element);
+    fails!(parse_str, "[1,]", Error::InvalidValue, missing_second_element_in_array);
+    fails!(parse_str, "[1,2,]", Error::InvalidValue, missing_third_element_in_array);
+    fails!(parse_str, "[1,2,", Error::OutOfBounds, missing_closing_bracket_after_second_element);
 
     // objects
-    ok!(parse, "{}", Json::Object(Dict::new()), empty_object_parses_ok);
-    ok!(parse, r#"{"1":1}"#, Json::Object(Dict::from([(String::from("1"), Json::Number{integer : 1, fraction : 0, precision : 0, exponent : 0})]) ), object_with_single_key_value_pair_parses_ok);
-    ok!(parse, r#"{"foo":"bar"}"#, Json::Object(Dict::from([ (String::from("foo"), Json::String(String::from("bar"))) ])), object_with_string_value_parses_ok);
-    ok!(parse, r#"{"":""}"#, Json::Object(Dict::from([ (String::from(""), Json::String(String::from(""))) ])), object_with_empty_key_parses_ok);
-    ok!(parse, r#"{"12":[]}"#, Json::Object(Dict::from([ (String::from("12"), Json::Array(Vec::new()) ) ])), object_with_empty_array_value_parses_ok);
-    ok!(parse, r#"{"a":1,"b":2,"c":3}"#, Json::Object(Dict::from([
+    ok!(parse_str, "{}", Json::Object(Dict::new()), empty_object_parses_ok);
+    ok!(parse_str, r#"{"1":1}"#, Json::Object(Dict::from([(String::from("1"), Json::Number{integer : 1, fraction : 0, precision : 0, exponent : 0})]) ), object_with_single_key_value_pair_parses_ok);
+    ok!(parse_str, r#"{"foo":"bar"}"#, Json::Object(Dict::from([ (String::from("foo"), Json::String(String::from("bar"))) ])), object_with_string_value_parses_ok);
+    ok!(parse_str, r#"{"":""}"#, Json::Object(Dict::from([ (String::from(""), Json::String(String::from(""))) ])), object_with_empty_key_parses_ok);
+    ok!(parse_str, r#"{"12":[]}"#, Json::Object(Dict::from([ (String::from("12"), Json::Array(Vec::new()) ) ])), object_with_empty_array_value_parses_ok);
+    ok!(parse_str, r#"{"a":1,"b":2,"c":3}"#, Json::Object(Dict::from([
                                                                (String::from("a"), Json::Number{integer : 1, fraction : 0, precision : 0, exponent : 0} ),
                                                                (String::from("b"), Json::Number{integer : 2, fraction : 0, precision : 0, exponent : 0} ),
                                                                (String::from("c"), Json::Number{integer : 3, fraction : 0, precision : 0, exponent : 0} ),
     ])), object_with_many_integer_values_parses_ok);
-    ok!(parse, r#"{"x":9.8e7}"#, Json::Object(Dict::from([ (String::from("x"), Json::Number{integer : 9, fraction : 8, precision : 1, exponent : 7} ) ])), object_with_float_number_value_parses_ok);
-    fails!(parse, r#"{"1":1"#, Error::OutOfBounds, missing_closing_paren);
-    fails!(parse, r#"{"foo"}"#, Error::CharMismatch{expected: b':', actual: b'}'}, missing_colon_and_value_after_key);
-    fails!(parse, r#"{"foo":}"#, Error::InvalidValue, missing_value_after_key);
+    ok!(parse_str, r#"{"x":9.8e7}"#, Json::Object(Dict::from([ (String::from("x"), Json::Number{integer : 9, fraction : 8, precision : 1, exponent : 7} ) ])), object_with_float_number_value_parses_ok);
+    fails!(parse_str, r#"{"1":1"#, Error::OutOfBounds, missing_closing_paren);
+    fails!(parse_str, r#"{"foo"}"#, Error::CharMismatch{expected: b':', actual: b'}'}, missing_colon_and_value_after_key);
+    fails!(parse_str, r#"{"foo":}"#, Error::InvalidValue, missing_value_after_key);
 
     // values with spaces
-    fails!(parse, "   ", Error::EmptyString, just_spaces_fail_to_parse);
-    fails!(parse, " [  ", Error::OutOfBounds, missing_closing_bracket_with_spaces);
-    fails!(parse, " ]  ", Error::InvalidValue, missing_opening_bracket_with_spaces);
-    ok!(parse, "   null   ", Json::Null, null_with_spaces_parses_ok);
-    ok!(parse, "   true   ", Json::Bool(true), true_with_spaces_parses_ok);
-    ok!(parse, "  false  ", Json::Bool(false), false_with_spaces_parses_ok);
-    ok!(parse, r#"" \u1234 \uabcd \u00Ff ""#, Json::String(String::from(" ? ? ? ")), string_with_unicodes_with_spaces_parses_ok);
-    ok!(parse, " [ true, false, null ] ", Json::Array(vec![ Json::Bool(true), Json::Bool(false), Json::Null ]), array_with_spaces_parses_ok);
-    ok!(parse, " [ true , false , null ] ", Json::Array(vec![ Json::Bool(true), Json::Bool(false), Json::Null ]), array_with_more_spaces_parses_ok);
-    ok!(parse, r#" { "a" : true , "b" : false , "c" : null } "#, Json::Object(Dict::from([ (String::from("a"), Json::Bool(true)), (String::from("b"), Json::Bool(false)), (String::from("c"), Json::Null) ])), object_with_spaces_parses_ok);
-    ok!(parse, r#" {  } "#, Json::Object(Dict::new()) , empty_object_with_spaces_parses_ok);
-    ok!(parse, r#" [  ] "#, Json::Array(Vec::new()) , empty_array_with_spaces_parses_ok);
+    fails!(parse_str, "   ", Error::EmptyString, just_spaces_fail_to_parse);
+    fails!(parse_str, " [  ", Error::OutOfBounds, missing_closing_bracket_with_spaces);
+    fails!(parse_str, " ]  ", Error::InvalidValue, missing_opening_bracket_with_spaces);
+    ok!(parse_str, "   null   ", Json::Null, null_with_spaces_parses_ok);
+    ok!(parse_str, "   true   ", Json::Bool(true), true_with_spaces_parses_ok);
+    ok!(parse_str, "  false  ", Json::Bool(false), false_with_spaces_parses_ok);
+    ok!(parse_str, r#"" \u1234 \uabcd \u00Ff ""#, Json::String(String::from(" ? ? ? ")), string_with_unicodes_with_spaces_parses_ok);
+    ok!(parse_str, " [ true, false, null ] ", Json::Array(vec![ Json::Bool(true), Json::Bool(false), Json::Null ]), array_with_spaces_parses_ok);
+    ok!(parse_str, " [ true , false , null ] ", Json::Array(vec![ Json::Bool(true), Json::Bool(false), Json::Null ]), array_with_more_spaces_parses_ok);
+    ok!(parse_str, r#" { "a" : true , "b" : false , "c" : null } "#, Json::Object(Dict::from([ (String::from("a"), Json::Bool(true)), (String::from("b"), Json::Bool(false)), (String::from("c"), Json::Null) ])), object_with_spaces_parses_ok);
+    ok!(parse_str, r#" {  } "#, Json::Object(Dict::new()) , empty_object_with_spaces_parses_ok);
+    ok!(parse_str, r#" [  ] "#, Json::Array(Vec::new()) , empty_array_with_spaces_parses_ok);
 
 }
 

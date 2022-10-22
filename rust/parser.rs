@@ -1,6 +1,6 @@
 mod json;
 
-use crate::json::{parse};
+use crate::json::{parse_str};
 
 use std::env;
 use std::fs;
@@ -10,7 +10,7 @@ pub fn main() {
     let print = args[1].as_str() == "-p";
     let input_file = args[2].clone();
     let json_str = fs::read_to_string(input_file).unwrap();
-    match parse(json_str) {
+    match parse_str(json_str.as_str()) {
         Ok(json) => {
             if print {
                 println!("{}", json)
