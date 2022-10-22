@@ -57,12 +57,6 @@ fun op>>= (r, f) =
        Ok ok => f ok
      | Error e => Error e
 
-infix >>!
-fun op>>! (r, f) =
-  case r of
-       Ok ok => Ok ok
-     | Error e => f e
-
 val hexdigits = (Vector.fromList o explode) "0123456789abcdef"
 
 fun is_hex ch =
