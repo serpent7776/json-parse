@@ -403,7 +403,7 @@ pub fn parse_str(s: &str) -> JsonResult {
 mod tests {
     use super::*;
 
-    fn fails<F: FnOnce(&str) -> JsonResult>(f: F, arg: &str, expected_err: Error) {
+    fn fails<Arg: fmt::Display + ?Sized, F: FnOnce(&Arg) -> JsonResult>(f: F, arg: &Arg, expected_err: Error) {
         let actual = f(arg);
         match actual {
             Err((actual_err, _)) => assert!(
@@ -421,7 +421,7 @@ mod tests {
         }
     }
 
-    fn ok<F: FnOnce(&str) -> JsonResult>(f: F, arg: &str, expected_json: Json) {
+    fn ok<Arg: fmt::Display + ?Sized, F: FnOnce(&Arg) -> JsonResult>(f: F, arg: &Arg, expected_json: Json) {
         let actual = f(arg);
         match actual {
             Ok(actual_json) => assert!(
