@@ -7,8 +7,8 @@ test: json.o tests.o tests-main.o
 	./tests
 
 .PHONY: parser
-parser: test
-	${CXX} -o parser ${CFLAGS} parser.cpp
+parser: test parser.o json.o
+	${CXX} -o parser parser.o json.o
 
 .PHONY: parser-test
 parser-test:
