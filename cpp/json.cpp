@@ -2,6 +2,7 @@
 #include <optional>
 #include <stdexcept>
 #include <utility>
+#include <variant>
 
 #include "json.hpp"
 #include "matching.hpp"
@@ -110,7 +111,7 @@ auto ask(std::string_view s, F&& f) -> Result<std::string>
 			auto [e, s] = std::get<Err>(r);
 			return Err{e, s};
 		}
-		else if (auto val = std::get_if<Ok<std::optional<char>>>(&r))
+		else if (std::holds_alternative<Ok<std::optional<char>>>(r))
 		{
 			auto [ch, cont] = std::get<Ok<std::optional<char>>>(r);
 			if (ch.has_value())
