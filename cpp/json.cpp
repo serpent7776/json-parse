@@ -560,9 +560,30 @@ auto parse(std::string_view sv) -> JsonResult
 		});
 }
 
+auto escape(const std::string& str)
+{
+	std::string buf;
+	buf.reserve(str.length());
+	for (auto ch: str)
+	{
+		switch (ch)
+		{
+			case '\"': buf += "\\\""; break;
+			case '\\': buf += "\\\\"; break;
+			case '\r': buf += "\\r"; break;
+			case '\n': buf += "\\n"; break;
+			case '\t': buf += "\\t"; break;
+			case '\b': buf += "\\b"; break;
+			case '\f': buf += "\\f"; break;
+			default: buf += ch;
+		}
+	}
+	return buf;
+}
+
 std::ostream& operator<<(std::ostream& o, Null)
 {
-	return o << "Null";
+	return o << "null";
 }
 
 std::ostream& operator<<(std::ostream& o, const Number& num)
@@ -595,13 +616,13 @@ std::ostream& operator<<(std::ostream& o, const Object& obj)
 	if (obj.size() > 0)
 	{
 		auto [key, value] = *obj.begin();
-		o << key << " = " << value;
+		o << '"' << escape(key) << '"' << ": " << value;
 		if (obj.size() > 1)
 		{
 			for (auto it = std::begin(obj); it != std::end(obj); ++it)
 			{
 				auto [key, value] = *it;
-				o << ", " << key << " = " << value;
+				o << ", \"" << escape(key) << "\": " << value;
 			}
 		}
 	}
@@ -612,6 +633,9 @@ std::ostream& operator<<(std::ostream& o, const Object& obj)
 std::ostream& operator<<(std::ostream& o, const Json& json)
 {
 	return match(json.value,
+		[&](const std::string& str) -> std::ostream& {
+			return o << '"' << escape(str) << '"';
+		},
 		[&](const auto& value) -> std::ostream& {
 			return o << value;
 		});
