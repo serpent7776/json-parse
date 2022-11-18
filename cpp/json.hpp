@@ -21,6 +21,12 @@ struct Number
 	bool operator==(const Number&) const = default;
 };
 
+inline Number operator-(Number n)
+{
+	n.integer = -n.integer;
+	return n;
+}
+
 struct Json;
 
 using Array = std::vector<Json>;
@@ -43,7 +49,7 @@ enum class Error
 	NullExpected,
 	TrueExpected,
 	FalseExpected,
-	/* ExponentRequired, */
+	ExponentRequired,
 	UnrecognisedEscapeSequence, //(u8),
 	InvalidValue,
 	OutOfBounds,
@@ -61,6 +67,21 @@ using Result = std::variant<Ok<T>, Err>;
 using JsonPart = Result<Json>;
 
 using JsonResult = std::variant<Json, Err>;
+
+inline Json null()
+{
+	return Json{Null{}};
+}
+
+inline Json True()
+{
+	return Json{true};
+}
+
+inline Json False()
+{
+	return Json{false};
+}
 
 auto parse(std::string_view s) -> JsonResult;
 
