@@ -33,7 +33,22 @@ type json =
         | String of string
         | Array of json list
         | Object of dict
-and dict = (string * json) list
+and dict = (string, json) Hashtbl.t
+
+let empty_dict () = Hashtbl.create 0
+
+let new_dict key value =
+        let h = Hashtbl.create 4 in
+        let () = Hashtbl.add h key value in
+        h
+
+let new_dict_from_list: (string * json) list -> (string, json) Hashtbl.t = fun ls ->
+        let h = Hashtbl.create 4 in
+        let add (key, value) =
+                Hashtbl.add h key value
+        in
+        let () = List.iter add ls in
+        h
 
 type error =
         | EmptyString
@@ -280,31 +295,33 @@ let parse1 str strlen =
                         )
                         | Ok _ -> Error (Fatal, idx)
                 in
-                let rec parse_next_object_item acc idx =
+                let rec parse_next_object_item dict idx =
                         match chr ',' idx with
-                        | Error (_, idx) -> Ok (List.rev acc, idx)
+                        | Error (_, idx) -> Ok (dict, idx)
                         | Ok (_, idx) ->
                                  let idx = skip_ws idx in
-                                 let= (item, idx) = parse_object_item idx in
+                                 let= ((key, value), idx) = parse_object_item idx in
+                                 let () = Hashtbl.replace dict key value in
                                  let idx = skip_ws idx in
-                                 parse_next_object_item (item :: acc) idx
+                                 parse_next_object_item dict idx
                 in
-                let parse_object_items item idx' =
-                        parse_next_object_item [item] idx'
+                let parse_object_items key value idx' =
+                        let dict = new_dict key value in
+                        parse_next_object_item dict idx'
                 in
-                let parse_object_rest item idx =
+                let parse_object_rest key value idx =
                         let idx = skip_ws idx in
-                        let= (items, idx) = parse_object_items item idx in
+                        let= (items, idx) = parse_object_items key value idx in
                         Ok (items, idx)
                 in
                 let= (_, idx) = chr '{' idx in
                 let idx = skip_ws idx in
                 let= (pairs, idx) =
                         if peek idx = '"' then
-                                let= (item, idx) = parse_object_item idx in
-                                parse_object_rest item idx
+                                let= ((key, value), idx) = parse_object_item idx in
+                                parse_object_rest key value idx
                         else
-                                Ok ([], idx)
+                                Ok (empty_dict (), idx)
                 in
                 let idx = skip_ws idx in
                 let= (_, idx) = chr '}' idx in
@@ -374,16 +391,20 @@ and print_array chan a =
         | [item] -> Printf.fprintf chan "[%a]" print item
         | hd :: tl -> Printf.fprintf chan "[%a, %a]" print hd print_array_items tl
 and print_object chan o =
-        let rec print_object_items chan = function
-                | [] -> ()
-                | (key, value) :: tl ->
-                        Printf.fprintf chan ", %a: %a" print_string key print value;
-                        print_object_items chan tl
+        let print_object_item sep chan (key, value) =
+                Printf.fprintf chan "%s%a: %a" sep print_string key print value
         in
-        match o with
-        | [] -> output_string chan "{}"
-        | [key, value] -> Printf.fprintf chan "{%a: %a}" print_string key print value
-        | (key, value) :: tl -> Printf.fprintf chan "{%a: %a%a}" print_string key print value print_object_items tl
+        let rec print_object_items chan seq =
+                match seq () with
+                | Seq.Nil -> ()
+                | Seq.Cons (item, next) ->
+                        print_object_item ", " chan item;
+                        print_object_items chan next
+        in
+        match Hashtbl.to_seq o () with
+        | Seq.Nil -> output_string chan "{}"
+        | Seq.Cons (item, next) ->
+                Printf.fprintf chan "{%a%a}" (print_object_item "") item print_object_items next
 (** Print string representation to given channall chan *)
 and print chan = function
         | Null -> output_string chan "null"

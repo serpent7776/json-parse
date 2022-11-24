@@ -114,7 +114,7 @@ let () =
         ok parse "[1.2]" (Array [ (Number {integer = 1; fraction = 2; precision = 1; exponent = 0}) ]);
         ok parse {|["abc"]|} (Array [ (String "abc") ]);
         ok parse "[[[]]]" (Array [ Array [ Array [ ] ] ]);
-        ok parse "[[[\"a\"]]]" (Array [ Array [ Array [ String "a" ] ] ]);
+        ok parse {|[[["a"]]]|} (Array [ Array [ Array [ String "a" ] ] ]);
         fails parse "[" (CharMismatch ']');
         fails parse "]" InvalidValue;
         fails parse "[[[" (CharMismatch ']');
@@ -136,17 +136,17 @@ let () =
         fails parse "[1,2," (InvalidArrayElement OutOfBounds);
 
         (* objects *)
-        ok parse "{}" (Object [ ]);
-        ok parse {|{"1":1}|} (Object [ ("1", Number {integer = 1; fraction = 0; precision = 0; exponent = 0}) ]);
-        ok parse {|{"foo":"bar"}|} (Object [ ("foo", String "bar") ]);
-        ok parse {|{"":""}|} (Object [ ("", String "") ]);
-        ok parse {|{"12":[]}|} (Object [ ("12", Array [ ] ) ]);
-        ok parse {|{"a":1,"b":2,"c":3}|} (Object [
+        ok parse "{}" (Object (Json.new_dict_from_list [ ]));
+        ok parse {|{"1":1}|} (Object (Json.new_dict_from_list [ ("1", Number {integer = 1; fraction = 0; precision = 0; exponent = 0}) ]));
+        ok parse {|{"foo":"bar"}|} (Object (Json.new_dict_from_list [ ("foo", String "bar") ]));
+        ok parse {|{"":""}|} (Object (Json.new_dict_from_list [ ("", String "") ]));
+        ok parse {|{"12":[]}|} (Object (Json.new_dict_from_list [ ("12", Array [ ] ) ]));
+        ok parse {|{"a":1,"b":2,"c":3}|} (Object (Json.new_dict_from_list [
                 ("a", Number {integer = 1; fraction = 0; precision = 0; exponent = 0} );
                 ("b", Number {integer = 2; fraction = 0; precision = 0; exponent = 0} );
                 ("c", Number {integer = 3; fraction = 0; precision = 0; exponent = 0} );
-        ]);
-        ok parse {|{"x":9.8e7}|} (Object [ ("x", Number {integer = 9; fraction = 8; precision = 1; exponent = 7} ) ]);
+        ]));
+        ok parse {|{"x":9.8e7}|} (Object (Json.new_dict_from_list [ ("x", Number {integer = 9; fraction = 8; precision = 1; exponent = 7} ) ]));
         fails parse {|{"1":1|} (CharMismatch '}');
         fails parse {|{"foo"}|} (CharMismatch ':');
         fails parse {|{"foo":}|} (InvalidObjectElement InvalidValue);
@@ -161,8 +161,8 @@ let () =
         ok parse {|" \u1234 \uabcd \u00Ff "|} (String " ? ? ? ");
         ok parse " [ true, false, null ] " (Array [ (Bool true); (Bool false); Null ]);
         ok parse " [ true , false , null ] " (Array [ (Bool true); (Bool false); Null ]);
-        ok parse {| { "a" : true , "b" : false , "c" : null } |} (Object [ ("a", Bool true); ("b", Bool false); ("c", Null) ] );
-        ok parse {| {  } |} (Object [ ] );
+        ok parse {| { "a" : true , "b" : false , "c" : null } |} (Object (Json.new_dict_from_list [ ("a", Bool true); ("b", Bool false); ("c", Null) ]) );
+        ok parse {| {  } |} (Object (Json.new_dict_from_list [ ]) );
         ok parse {| [  ] |} (Array [ ] );
 
         exit !result
