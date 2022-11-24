@@ -389,7 +389,7 @@ and print_array chan a =
         match a with
         | [] -> output_string chan "[]"
         | [item] -> Printf.fprintf chan "[%a]" print item
-        | hd :: tl -> Printf.fprintf chan "[%a, %a]" print hd print_array_items tl
+        | hd :: tl -> Printf.fprintf chan "[%a%a]" print hd print_array_items tl
 and print_object chan o =
         let print_object_item sep chan (key, value) =
                 Printf.fprintf chan "%s%a: %a" sep print_string key print value
