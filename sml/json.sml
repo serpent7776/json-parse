@@ -289,7 +289,8 @@ fun escape ch =
   else str ch
 
 fun print_number {integer, fraction, precision, exponent} =
-  (print (Int.toString integer);
+  (if integer < 0 then print "-" else ();
+  print (Int.toString (Int.abs integer));
   if fraction <> 0 then
     (print ".";
     print (Int.toString fraction))
