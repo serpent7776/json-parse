@@ -96,6 +96,7 @@ template<typename F>
 auto ask(std::string_view s, F&& f) -> Result<std::string>
 {
 	std::vector<char> buf;
+	buf.reserve(64);
 	std::string_view span = s;
 	while (not span.empty())
 	{
@@ -354,6 +355,7 @@ auto parse_string(std::string_view s) -> JsonPart
 auto parse_array_items_tail(Json head, std::string_view s) -> Result<Array>
 {
 	Array buf;
+	buf.reserve(8);
 	buf.push_back(std::move(head));
 	std::string_view cont = s;
 	while (not cont.empty())
@@ -424,6 +426,7 @@ auto parse_object_items_tail(std::string key, Json value, std::string_view s) ->
 {
 	std::string_view cont = s;
 	Object buf;
+	buf.reserve(8);
 	buf.insert({std::move(key), std::move(value)});
 	while (not cont.empty())
 	{
