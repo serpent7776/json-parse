@@ -1,4 +1,4 @@
-CPPFLAGS=-std=c++2b -Wall -Wextra -pedantic -O2 -ggdb3
+CXXFLAGS=-std=c++2b -Wall -Wextra -pedantic -O2 -ggdb3
 CXX=g++
 
 .PHONY: test
