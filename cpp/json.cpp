@@ -10,7 +10,7 @@
 template<typename T>
 Result<T> ok(T val, std::string_view s)
 {
-	return Ok{std::move(val), s};
+	return Ok<T>{std::move(val), s};
 }
 template<typename T>
 Result<T> err(Error e, std::string_view s)
@@ -138,7 +138,7 @@ auto skip_ws(std::string_view s)
 auto chr(std::string_view s, char ch) -> Result<char>
 {
 	if (s.empty()) return Err{Error::OutOfBounds, s};
-	if (s.front() == ch) return Ok{ch, next(s)};
+	if (s.front() == ch) return Ok<char>{ch, next(s)};
 	return Err{Error::CharMismatch, s};
 }
 
@@ -226,7 +226,7 @@ auto parse_number_parts(std::string_view s) -> Result<Number>
 							return Result<long>(ok(0l, s));
 						});
 					return match(r,
-						[=](long exponent, std::string_view s){
+						[=, fraction=fraction, precision=precision](long exponent, std::string_view s){
 							return ok(Number{.integer=integer, .fraction=fraction, .precision=precision, .exponent=exponent}, s);
 						},
 						[](Error e, std::string_view s){
