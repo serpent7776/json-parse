@@ -108,7 +108,7 @@ auto ask(std::string_view s, F&& f) -> Result<std::string>
 		}
 		else if (std::holds_alternative<Ok<std::optional<char>>>(r))
 		{
-			auto& [ch, cont] = std::get<Ok<std::optional<char>>>(r);
+			auto [ch, cont] = std::get<Ok<std::optional<char>>>(r);
 			if (ch.has_value())
 			{
 				buf.push_back(ch.value());
@@ -145,7 +145,7 @@ auto chr(std::string_view s, char ch) -> Result<char>
 JsonPart parse_null(std::string_view s)
 {
 	return match(take(s, is_alpha),
-		[](const std::string& str, std::string_view s) {
+		[](std::string&& str, std::string_view s) {
 			if (str == "null") return part(null(), s);
 			else return nth(Error::EmptyString, s);
 		},
@@ -157,7 +157,7 @@ JsonPart parse_null(std::string_view s)
 JsonPart parse_true(std::string_view s)
 {
 	return match(take(s, is_alpha),
-		[](const std::string& str, std::string_view s) {
+		[](std::string&& str, std::string_view s) {
 			if (str == "true") return part(true, s);
 			else return nth(Error::TrueExpected, s);
 		},
@@ -169,7 +169,7 @@ JsonPart parse_true(std::string_view s)
 JsonPart parse_false(std::string_view s)
 {
 	return match(take(s, is_alpha),
-		[](const std::string& str, std::string_view s) {
+		[](std::string&& str, std::string_view s) {
 			if (str == "false") return part(false, s);
 			else return nth(Error::FalseExpected, s);
 		},
@@ -181,7 +181,7 @@ JsonPart parse_false(std::string_view s)
 auto parse_fraction(std::string_view s) -> Result<std::pair<long, size_t>>
 {
 	return match(take(s, is_digit),
-		[](const std::string& str, std::string_view s) {
+		[](std::string&& str, std::string_view s) {
 			const long fraction = stol(str);
 			const size_t precision = str.length();
 			return ok(std::pair(fraction, precision), s);
@@ -194,7 +194,7 @@ auto parse_fraction(std::string_view s) -> Result<std::pair<long, size_t>>
 auto parse_exponent(std::string_view s) -> Result<long>
 {
 	return match(take(s, is_digit),
-		[](const std::string& str, std::string_view s){
+		[](std::string&& str, std::string_view s){
 			const long exponent = stol(str);
 			return ok(exponent, s);
 		},
@@ -206,17 +206,17 @@ auto parse_exponent(std::string_view s) -> Result<long>
 auto parse_number_parts(std::string_view s) -> Result<Number>
 {
 	return match(take(s, is_digit),
-		[](const std::string& int_str, std::string_view s) {
+		[](std::string&& int_str, std::string_view s) {
 			const long integer = stol(int_str);
-			const auto r = match(chr(s, '.'),
+			auto r = match(chr(s, '.'),
 				[](char, std::string_view s){
 					 return parse_fraction(s);
 				},
 				[](Error, std::string_view s){
 					return ok(std::pair(0l, 0uz), s);
 				});
-			 return match(r,
-				[&](std::pair<long, size_t> p, std::string_view s){
+			 return match(std::move(r),
+				[&](std::pair<long, size_t>&& p, std::string_view s){
 					const auto [fraction, precision] = p;
 					const auto r = match(chr(s, 'e'),
 						[](char, std::string_view s){
@@ -245,7 +245,7 @@ auto parse_number_parts(std::string_view s) -> Result<Number>
 JsonPart parse_number(std::string_view s)
 {
 	return match(parse_number_parts(s),
-		[](Number num, std::string_view s){
+		[](Number&& num, std::string_view s){
 			return part(std::move(num), s);
 		},
 		[](Error e, std::string_view s){
@@ -258,7 +258,7 @@ JsonPart parse_negative_number(std::string_view s)
 	return match(chr(s, '-'),
 		[](char, std::string_view s){
 			return match(parse_number_parts(s),
-				[](const Number& num, std::string_view s){
+				[](Number&& num, std::string_view s){
 					return part(-num, s);
 				},
 				[](Error e, std::string_view s){
@@ -323,7 +323,7 @@ auto parse_string_raw(std::string_view s) -> Result<std::string>
 	return match(chr(s, '"'),
 		[](char, std::string_view s){
 			return match(ask(s, string_char),
-				[](std::string str, std::string_view s){
+				[](std::string&& str, std::string_view s){
 					return match(chr(s, '"'),
 						[&](char, std::string_view s){
 							return ok<std::string>(std::move(str), s);
@@ -344,7 +344,7 @@ auto parse_string_raw(std::string_view s) -> Result<std::string>
 auto parse_string(std::string_view s) -> JsonPart
 {
 	return match(parse_string_raw(s),
-		[](std::string str, std::string_view s){
+		[](std::string&& str, std::string_view s){
 			return part(std::move(str), s);
 		},
 		[](Error e, std::string_view s){
@@ -352,7 +352,7 @@ auto parse_string(std::string_view s) -> JsonPart
 		});
 }
 
-auto parse_array_items_tail(Json head, std::string_view s) -> Result<Array>
+auto parse_array_items_tail(Json&& head, std::string_view s) -> Result<Array>
 {
 	Array buf;
 	buf.reserve(8);
@@ -369,7 +369,7 @@ auto parse_array_items_tail(Json head, std::string_view s) -> Result<Array>
 		else if (std::holds_alternative<Ok<char>>(r))
 		{
 			auto [c, s] = std::get<Ok<char>>(r);
-			const auto r = parse_value(s);
+			auto r = parse_value(s);
 			if (std::holds_alternative<Err>(r))
 			{
 				auto [e, s] = std::get<Err>(r);
@@ -391,7 +391,7 @@ auto parse_array_items_tail(Json head, std::string_view s) -> Result<Array>
 auto parse_array_items(std::string_view s) -> Result<Array>
 {
 	return match(parse_value(s),
-		[](Json json, std::string_view s){
+		[](Json&& json, std::string_view s){
 			return parse_array_items_tail(std::move(json), s);
 		},
 		[](Error, std::string_view s){
@@ -404,7 +404,7 @@ auto parse_array(std::string_view s) -> JsonPart
 	return match(chr(s, '['),
 		[](char, std::string_view s){
 			return match(parse_array_items(s),
-				[](auto items, std::string_view s){
+				[](Array&& items, std::string_view s){
 					return match(chr(skip_ws(s), ']'),
 						[&](char, std::string_view s){
 							return part(std::move(items), s);
@@ -422,12 +422,12 @@ auto parse_array(std::string_view s) -> JsonPart
 		});
 }
 
-auto parse_object_items_tail(std::string key, Json value, std::string_view s) -> Result<Object>
+auto parse_object_items_tail(std::string key, Json&& value, std::string_view s) -> Result<Object>
 {
 	std::string_view cont = s;
 	Object buf;
 	buf.reserve(8);
-	buf.insert({std::move(key), std::move(value)});
+	buf.emplace(std::move(key), std::move(value));
 	while (not cont.empty())
 	{
 		const auto r = chr(skip_ws(cont), ',');
@@ -439,7 +439,7 @@ auto parse_object_items_tail(std::string key, Json value, std::string_view s) ->
 		else if (std::holds_alternative<Ok<char>>(r))
 		{
 			auto [c, s] = std::get<Ok<char>>(r);
-			const auto r = parse_string_raw(skip_ws(s));
+			auto r = parse_string_raw(skip_ws(s));
 			if (std::holds_alternative<Err>(r))
 			{
 				auto [e, s] = std::get<Err>(r);
@@ -467,7 +467,7 @@ auto parse_object_items_tail(std::string key, Json value, std::string_view s) ->
 					{
 						auto&& [value, s] = std::get<Ok<Json>>(r);
 						cont = s;
-						buf.insert({std::move(key), std::move(value)});
+						buf.insert_or_assign(std::move(key), std::move(value));
 					}
 					else return err<Object>(Error::Failure, cont);
 				}
@@ -483,11 +483,11 @@ auto parse_object_items_tail(std::string key, Json value, std::string_view s) ->
 auto parse_object_items(std::string_view s) -> Result<Object>
 {
 	return match(parse_string_raw(skip_ws(s)),
-		[](std::string key, std::string_view s){
+		[](std::string&& key, std::string_view s){
 			return match(chr(skip_ws(s), ':'),
 				[&](char, std::string_view s){
 					return match(parse_value(s),
-						[&](Json value, std::string_view s){
+						[&](Json&& value, std::string_view s){
 							return parse_object_items_tail(std::move(key), std::move(value), s);
 						},
 						[](Error e, std::string_view s){
@@ -508,7 +508,7 @@ auto parse_object(std::string_view s) -> JsonPart
 	return match(chr(s, '{'),
 		[](char, std::string_view s){
 			return match(parse_object_items(s),
-				[](Object items, std::string_view s){
+				[](Object&& items, std::string_view s){
 					return match(chr(skip_ws(s), '}'),
 						[&](char, std::string_view s){
 							return part(std::move(items), s);
@@ -548,7 +548,7 @@ auto parse(std::string_view sv) -> JsonResult
 	std::string_view s = skip_ws(sv);
 	if (s.empty()) return JsonResult(Err{Error::EmptyString, s});
 	return match(parse_value(s),
-		[](Json json, std::string_view sv){
+		[](Json&& json, std::string_view sv){
 			std::string_view s = skip_ws(sv);
 			if (s.empty()) return JsonResult{std::move(json)};
 			else return JsonResult{Err{Error::Garbage, s}};

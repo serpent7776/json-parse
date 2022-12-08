@@ -2,22 +2,39 @@
 #include "json.hpp"
 #include "matching.hpp"
 
+template <typename ...Jsons>
+Array make_array(Jsons&&... jsons)
+{
+	Array arr;
+	arr.reserve(sizeof...(jsons));
+	(arr.push_back(std::forward<Jsons>(jsons)), ...);
+	return arr;
+}
+
+template <typename ...Jsons>
+Object make_object(std::pair<std::string, Jsons>&&... kvs)
+{
+	Object obj;
+	(obj.insert(std::forward<std::pair<std::string, Jsons>>(kvs)), ...);
+	return obj;
+}
+
 #define FAILS(f, arg, expected_error) \
 	match(f(arg), \
-		[&](Json actual_json){ \
+		[](Json&& actual_json){ \
 			CAPTURE(actual_json, expected_error); \
 			CHECK(false); \
 		}, \
-		[&](Error actual_error, std::string_view){ \
+		[](Error actual_error, std::string_view){ \
 			CHECK(expected_error == actual_error); \
 		})
 
 #define OK(f, arg, expected_json) \
 	match(f(arg), \
-		[&](Json actual_json){ \
+		[](Json&& actual_json){ \
 			CHECK(actual_json == expected_json); \
 		}, \
-		[&](Error actual_error, std::string_view){ \
+		[](Error actual_error, std::string_view){ \
 			CAPTURE(actual_error, expected_json); \
 			CHECK(false); \
 		})
@@ -82,32 +99,32 @@ TEST_CASE("strings")
 TEST_CASE("arrays")
 {
 	OK(parse, R"([])", (Json{Array()}));
-	OK(parse, R"([null])", (Json{Array{null()}}));
-	OK(parse, R"([[null]])", (Json{Array{{Array{null()}}}}));
-	OK(parse, R"([true])", (Json{Array{True()}}));
-	OK(parse, R"([false])", (Json{Array{False()}}));
-	OK(parse, R"([true,false])", (Json{Array{True(), False()}}));
-	OK(parse, R"([1.2])", (Json{Array{Json{Number{.integer=1, .fraction=2, .precision=1, .exponent=0}}}}));
-	OK(parse, R"(["abc"])", (Json{Array{Json{"abc"}}}));
-	OK(parse, R"([[[]]])", (Json{Array{{Array{{Array{}}}}}}));
-	OK(parse, R"([[["a"]]])", (Json{Array{{Array{{Array{Json{"a"}}}}}}}));
+	OK(parse, R"([null])", (Json{make_array(null())}));
+	OK(parse, R"([[null]])", (Json{make_array(Json{make_array(null())})}));
+	OK(parse, R"([true])", (Json{make_array(True())}));
+	OK(parse, R"([false])", (Json{make_array(False())}));
+	OK(parse, R"([true,false])", (Json{make_array(True(), False())}));
+	OK(parse, R"([1.2])", (Json{make_array(Json{Number{.integer=1, .fraction=2, .precision=1, .exponent=0}})}));
+	OK(parse, R"(["abc"])", (Json{make_array(Json{"abc"})}));
+	OK(parse, R"([[[]]])", (Json{make_array(Json{make_array(Json{make_array()})})}));
+	OK(parse, R"([[["a"]]])", (Json{make_array(Json{make_array(Json{make_array(Json{"a"})})})}));
 	FAILS(parse, R"([)", (Error::OutOfBounds));
 	FAILS(parse, R"(])", (Error::InvalidValue));
 	FAILS(parse, R"([[[)", (Error::OutOfBounds));
 	FAILS(parse, R"(]]])", (Error::InvalidValue));
-	OK(parse, R"([1,2,3])", (Json{Array{{
+	OK(parse, R"([1,2,3])", (Json{make_array(
 		Json{Number{.integer=1, .fraction=0, .precision=0, .exponent=0}},
 		Json{Number{.integer=2, .fraction=0, .precision=0, .exponent=0}},
-		Json{Number{.integer=3, .fraction=0, .precision=0, .exponent=0}},
-	}}}));
+		Json{Number{.integer=3, .fraction=0, .precision=0, .exponent=0}}
+	)}));
 	FAILS(parse, R"(["])", (Error::OutOfBounds));
-	OK(parse, R"([true,false,null,0])", (Json{Array{{
+	OK(parse, R"([true,false,null,0])", (Json{make_array(
 		True(),
 		False(),
 		null(),
-		Json{Number{.integer=0, .fraction=0, .precision=0, .exponent=0}},
-	}}}));
-	OK(parse, R"([[],[]])", (Json{Array{{ Json{Array{}}, Json{Array{}} }}}));
+		Json{Number{.integer=0, .fraction=0, .precision=0, .exponent=0}}
+	)}));
+	OK(parse, R"([[],[]])", (Json{make_array( Json{make_array()}, Json{make_array()} )}));
 	FAILS(parse, R"([1,)", (Error::InvalidValue));
 	FAILS(parse, R"([1,])", (Error::InvalidValue));
 	FAILS(parse, R"([1,2,])", (Error::InvalidValue));
@@ -117,26 +134,26 @@ TEST_CASE("arrays")
 TEST_CASE("objects")
 {
 	OK(parse, R"({})", (Json{Object{}}));
-	OK(parse, R"({"1":1})", (Json{Object{
-		{{"1"}, Json{Number{.integer=1, .fraction=0, .precision=0, .exponent=0}}}
-	}}));
-	OK(parse, R"({"foo":"bar"})", (Json{Object{
-		{{"foo"}, Json{"bar"}}
-	}}));
-	OK(parse, R"({"":""})", (Json{Object{
-		{{""}, Json{""}}
-	}}));
-	OK(parse, R"({"12":[]})", (Json{Object{
-		{{"12"}, Json{Array{}}}
-	}}));
-	OK(parse, R"({"a":1,"b":2,"c":3})", (Json{Object{
-		{{"a"}, Json{Number{.integer=1, .fraction=0, .precision=0, .exponent=0}}},
-		{{"b"}, Json{Number{.integer=2, .fraction=0, .precision=0, .exponent=0}}},
-		{{"c"}, Json{Number{.integer=3, .fraction=0, .precision=0, .exponent=0}}},
-	}}));
-	OK(parse, R"({"x":9.8e7})", (Json{Object{
-		{{"x"}, Json{Number{.integer=9, .fraction=8, .precision=1, .exponent=7}}},
-	}}));
+	OK(parse, R"({"1":1})", (Json{make_object(
+		std::pair{std::string{"1"}, Json{Number{.integer=1, .fraction=0, .precision=0, .exponent=0}}}
+	)}));
+	OK(parse, R"({"foo":"bar"})", (Json{make_object(
+		std::pair{std::string{"foo"}, Json{"bar"}}
+	)}));
+	OK(parse, R"({"":""})", (Json(make_object(
+		std::pair{std::string{""}, Json{""}}
+	))));
+	OK(parse, R"({"12":[]})", (Json(make_object(
+		std::pair{std::string{"12"}, Json{make_array()}}
+	))));
+	OK(parse, R"({"a":1,"b":2,"c":3})", (Json(make_object(
+		std::pair{std::string{"a"}, Json{Number{.integer=1, .fraction=0, .precision=0, .exponent=0}}},
+		std::pair{std::string{"b"}, Json{Number{.integer=2, .fraction=0, .precision=0, .exponent=0}}},
+		std::pair{std::string{"c"}, Json{Number{.integer=3, .fraction=0, .precision=0, .exponent=0}}}
+	))));
+	OK(parse, R"({"x":9.8e7})", (Json{make_object(
+		std::pair{std::string{"x"}, Json{Number{.integer=9, .fraction=8, .precision=1, .exponent=7}}}
+	)}));
 	FAILS(parse, R"({"1":1)", (Error::OutOfBounds));
 	FAILS(parse, R"({"foo")", (Error::OutOfBounds));
 	FAILS(parse, R"({"foo":)", (Error::InvalidValue));
@@ -150,17 +167,17 @@ TEST_CASE("values with spaces")
 	OK(parse, R"(   true   )", (Json{True()}));
 	OK(parse, R"(   false   )", (Json{False()}));
 	OK(parse, R"(" \u1234 \uabcd \u00Ff ")", (Json{" ? ? ? "}));
-	OK(parse, R"([ true, false, null ])", (Json{Array{{
+	OK(parse, R"([ true, false, null ])", (Json{make_array(
 		True(), False(), null()
-	}}}));
-	OK(parse, R"( [ true , false , null ] )", (Json{Array{{
+	)}));
+	OK(parse, R"( [ true , false , null ] )", (Json{make_array(
 		True(), False(), null()
-	}}}));
-	OK(parse, R"( { "a" : true , "b" : false , "c" : null } )", (Json{Object{
-		{{"a"}, True()},
-		{{"b"}, False()},
-		{{"c"}, null()},
-	}}));
+	)}));
+	OK(parse, R"( { "a" : true , "b" : false , "c" : null } )", (Json{make_object(
+		std::pair{std::string{"a"}, True()},
+		std::pair{std::string{"b"}, False()},
+		std::pair{std::string{"c"}, null()}
+	)}));
 	OK(parse, R"( {  } )", (Json{Object{}}));
-	OK(parse, R"( [  ] )", (Json{Array{}}));
+	OK(parse, R"( [  ] )", (Json{make_array()}));
 }

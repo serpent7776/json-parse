@@ -32,25 +32,40 @@ struct Json;
 using Array = std::vector<Json>;
 using Object = std::unordered_map<std::string, Json>;
 
+struct NonCopyable
+{
+	constexpr NonCopyable() noexcept = default;
+	NonCopyable(const NonCopyable&) = delete;
+	constexpr NonCopyable(NonCopyable&&) noexcept = default;
+
+	NonCopyable& operator=(NonCopyable&&) = default;
+	NonCopyable& operator=(const NonCopyable&) = delete;
+};
+
 struct Json
 {
 	using t = std::variant<Null, bool, Number, std::string, Array, Object>;
 
-	bool operator==(const Json&) const = default;
+	bool operator==(const Json& other) const {return value == other.value;};
 
 	t value;
+	[[no_unique_address]] NonCopyable _n = {};
 };
+
+static_assert(std::is_nothrow_move_constructible_v<Json>);
+static_assert(std::is_aggregate_v<Json>);
+static_assert(not std::is_copy_constructible_v<Json>);
 
 enum class Error
 {
 	EmptyString,
-	CharMismatch, //{ expected: u8, actual: u8 },
+	CharMismatch,
 	HexCharExpected,
 	NullExpected,
 	TrueExpected,
 	FalseExpected,
 	ExponentRequired,
-	UnrecognisedEscapeSequence, //(u8),
+	UnrecognisedEscapeSequence,
 	InvalidValue,
 	OutOfBounds,
 	Garbage,
