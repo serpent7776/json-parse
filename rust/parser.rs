@@ -18,6 +18,6 @@ pub fn main() {
                 println!("OK")
             }
         },
-        Err((error, idx)) => println!("{} at {}", error, idx),
+        Err((error, idx)) => println!("Error: {} at {}", error, idx),
     }
 }

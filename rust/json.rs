@@ -56,7 +56,7 @@ impl fmt::Display for Error {
         match self {
             Error::EmptyString => write!(fmt, "Empty string parsed"),
             Error::CharMismatch { expected, actual } => {
-                write!(fmt, "Expected {}, but read {}", expected, actual)
+                write!(fmt, "Expected {}, but read {}", char::from(*expected), char::from(*actual))
             }
             Error::HexCharExpected => write!(fmt, "Expected hex char"),
             Error::UtfDecodingError(error) => write!(fmt, "{}", error),
